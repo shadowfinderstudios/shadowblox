@@ -16,6 +16,7 @@ cdb = env.CompilationDatabase()
 Default(cdb)
 
 sources = Glob("src/*.cpp")
+sources += Glob("src/Runtime/*.cpp")
 
 env.Append(LIBS=[shadowblox_lib, luau_lib])
 env.Append(CPPPATH="src/")

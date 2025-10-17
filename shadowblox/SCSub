@@ -8,6 +8,7 @@ cdb = env.CompilationDatabase()
 Default(cdb)
 
 sources = Glob("src/*.cpp")
+sources += Glob("src/Runtime/*.cpp")
 
 includes = ["#shadowblox/include/"]
 
