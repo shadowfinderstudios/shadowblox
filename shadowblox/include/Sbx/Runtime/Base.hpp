@@ -6,6 +6,15 @@
 
 #include "Sbx/Runtime/LuauRuntime.hpp"
 
+enum UdataTag {
+	Int64Udata = 0,
+
+	Test1Udata = 124,
+	Test2Udata = 125,
+	Test3Udata = 126,
+	Test4Udata = 127,
+};
+
 // https://github.com/Pseudoreality/Roblox-Identities
 // Some omitted
 enum SbxIdentity {

@@ -7,6 +7,8 @@
 #include "lua.h"
 #include "lualib.h"
 
+#include "Sbx/Runtime/Stack.hpp"
+
 // Based on the default implementation seen in the Lua 5.1 reference
 static void *luaSBX_alloc(void *, void *ptr, size_t, size_t nsize) {
 	if (nsize == 0) {
@@ -48,7 +50,9 @@ static void luaSBX_userthread(lua_State *LP, lua_State *L) {
 lua_State *luaSBX_newstate(LuauRuntime::VMType vmType, SbxIdentity defaultIdentity) {
 	lua_State *L = lua_newstate(luaSBX_alloc, nullptr);
 
+	// Base libraries
 	luaL_openlibs(L);
+	LuauStackOp<int64_t>::initMetatable(L);
 
 	SbxThreadData *udata = luaSBX_initthreaddata(nullptr, L);
 	udata->vmType = vmType;
