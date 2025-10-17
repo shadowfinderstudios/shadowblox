@@ -28,6 +28,8 @@
 #include "Sbx/Runtime/LuauRuntime.hpp"
 #include "lua.h"
 
+using namespace SBX;
+
 TEST_SUITE_BEGIN("Runtime/Base");
 
 TEST_CASE("newstate") {

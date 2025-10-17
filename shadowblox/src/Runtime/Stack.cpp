@@ -35,6 +35,8 @@
 
 /* BASIC TYPES */
 
+namespace SBX {
+
 #define BASIC_STACK_OP_IMPL(mType, mOpName, mIsName)                                                                 \
 	void LuauStackOp<mType>::Push(lua_State *L, const mType &value) { lua_push##mOpName(L, value); }                 \
 	mType LuauStackOp<mType>::Get(lua_State *L, int index) { return static_cast<mType>(lua_to##mOpName(L, index)); } \
@@ -166,3 +168,5 @@ void LuauStackOp<const char *>::Push(lua_State *L, const char *value) { lua_push
 const char *LuauStackOp<const char *>::Get(lua_State *L, int index) { return lua_tostring(L, index); }
 bool LuauStackOp<const char *>::Is(lua_State *L, int index) { return lua_isstring(L, index); }
 const char *LuauStackOp<const char *>::Check(lua_State *L, int index) { return luaL_checkstring(L, index); }
+
+} //namespace SBX

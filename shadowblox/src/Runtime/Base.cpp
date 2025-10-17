@@ -35,6 +35,8 @@
 #include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
+namespace SBX {
+
 // Based on the default implementation seen in the Lua 5.1 reference
 static void *luaSBX_alloc(void *, void *ptr, size_t, size_t nsize) {
 	if (nsize == 0) {
@@ -166,3 +168,5 @@ void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *
 				udata->identity, actionDesc, permId);
 	}
 }
+
+} //namespace SBX

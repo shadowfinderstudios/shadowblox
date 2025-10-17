@@ -33,6 +33,8 @@
 
 #include "Sbx/Runtime/Base.hpp"
 
+namespace SBX {
+
 ThreadHandle::ThreadHandle(lua_State *L) :
 		L(L) {
 	if (std::mutex *mut = luaSBX_getthreaddata(L)->mutex.get())
@@ -90,3 +92,5 @@ void LuauRuntime::gcSize(int32_t *outBuffer) {
 		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
 	}
 }
+
+} //namespace SBX

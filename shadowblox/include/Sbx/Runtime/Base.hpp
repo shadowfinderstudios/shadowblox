@@ -30,6 +30,8 @@
 
 #include "Sbx/Runtime/LuauRuntime.hpp"
 
+namespace SBX {
+
 enum UdataTag : uint8_t {
 	Int64Udata = 0,
 
@@ -95,3 +97,5 @@ int32_t identityToCapabilities(SbxIdentity identity);
 
 bool luaSBX_iscapability(lua_State *L, SbxCapability capability);
 void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *actionDesc);
+
+} //namespace SBX

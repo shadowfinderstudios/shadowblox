@@ -34,6 +34,8 @@
 #include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
+using namespace SBX;
+
 TEST_SUITE_BEGIN("Runtime/Stack");
 
 struct TestStruct {

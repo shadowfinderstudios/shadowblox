@@ -29,6 +29,8 @@
 
 #include "lua.h"
 
+namespace SBX {
+
 template <typename T>
 struct LuauStackOp {};
 
@@ -152,3 +154,5 @@ struct LuauStackOp<const char *> {
 	[](lua_State *, void *udata) {                  \
 		reinterpret_cast<mType *>(udata)->~mType(); \
 	}
+
+} //namespace SBX

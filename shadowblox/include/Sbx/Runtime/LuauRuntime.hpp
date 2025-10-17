@@ -27,6 +27,9 @@
 #include <cstdint>
 
 struct lua_State;
+
+namespace SBX {
+
 class ThreadHandle;
 
 class LuauRuntime {
@@ -72,3 +75,5 @@ public:
 private:
 	lua_State *L;
 };
+
+} //namespace SBX
