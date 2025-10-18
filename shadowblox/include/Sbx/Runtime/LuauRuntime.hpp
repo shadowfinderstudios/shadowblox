@@ -49,15 +49,15 @@ public:
 	LuauRuntime &operator=(const LuauRuntime &other) = delete;
 	LuauRuntime &operator=(LuauRuntime &&other) = delete;
 
-	ThreadHandle getVM(VMType type);
+	ThreadHandle GetVM(VMType type);
 
-	void gcStep(const uint32_t *step, double delta);
-	void gcSize(int32_t *outBuffer);
+	void GCStep(const uint32_t *step, double delta);
+	void GCSize(int32_t *outBuffer);
 
 private:
 	void (*initCallback)(lua_State *);
 	lua_State *vms[VMMax];
-	void initVM(lua_State *L);
+	void InitVM(lua_State *L);
 };
 
 class ThreadHandle {

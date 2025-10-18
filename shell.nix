@@ -7,6 +7,8 @@ pkgs.mkShell.override { stdenv = pkgs.clang19Stdenv; } {
 
     valgrind
 
+    doxygen
+
     # Formatter
     treefmt
     nixpkgs-fmt

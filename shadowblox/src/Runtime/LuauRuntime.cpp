@@ -51,10 +51,10 @@ ThreadHandle::operator lua_State *() const { return L; }
 LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *)) :
 		initCallback(initCallback) {
 	vms[CoreVM] = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
-	initVM(vms[CoreVM]);
+	InitVM(vms[CoreVM]);
 
 	vms[UserVM] = luaSBX_newstate(UserVM, GameScriptIdentity);
-	initVM(vms[UserVM]);
+	InitVM(vms[UserVM]);
 }
 
 LuauRuntime::~LuauRuntime() {
@@ -64,7 +64,7 @@ LuauRuntime::~LuauRuntime() {
 	}
 }
 
-void LuauRuntime::initVM(lua_State *L) {
+void LuauRuntime::InitVM(lua_State *L) {
 	if (initCallback)
 		initCallback(L);
 
@@ -75,20 +75,20 @@ void LuauRuntime::initVM(lua_State *L) {
 		Luau::CodeGen::create(L);
 }
 
-ThreadHandle LuauRuntime::getVM(VMType type) {
+ThreadHandle LuauRuntime::GetVM(VMType type) {
 	return vms[type];
 }
 
-void LuauRuntime::gcStep(const uint32_t *step, double delta) {
+void LuauRuntime::GCStep(const uint32_t *step, double delta) {
 	for (int i = 0; i < VMMax; i++) {
-		ThreadHandle L = getVM(VMType(i));
+		ThreadHandle L = GetVM(VMType(i));
 		lua_gc(L, LUA_GCSTEP, step[i] * delta);
 	}
 }
 
-void LuauRuntime::gcSize(int32_t *outBuffer) {
+void LuauRuntime::GCSize(int32_t *outBuffer) {
 	for (int i = 0; i < VMMax; i++) {
-		ThreadHandle L = getVM(VMType(i));
+		ThreadHandle L = GetVM(VMType(i));
 		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
 	}
 }

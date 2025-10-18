@@ -46,7 +46,7 @@ struct TestStruct {
 	}
 };
 
-STACK_OP_PTR_DEF(TestStruct);
+STACK_OP_UDATA_DEF(TestStruct);
 UDATA_STACK_OP_IMPL(TestStruct, "SbxTests.TestStruct", Test1Udata, NO_DTOR);
 
 template <typename T, typename U>

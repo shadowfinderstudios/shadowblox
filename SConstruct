@@ -1,8 +1,13 @@
 # -*- mode: python -*-
 
+import os
+
 env_base = Environment(
     tools=["default", "compilation_db"], CC="clang", CXX="clang++", PLATFORM=""
 )
+
+# clang terminal colors
+env_base["ENV"]["TERM"] = os.environ.get("TERM")
 
 cdb = env_base.CompilationDatabase()
 Default(cdb)
@@ -20,7 +25,7 @@ opts.Add(
 
 opts.Update(env_base)
 
-env_base.Append(CCFLAGS=["-std=c++17"])
+env_base.Append(CCFLAGS=["-std=c++20"])
 if env_base["config"] == "debug":
     env_base.Append(CCFLAGS=["-O2", "-g"])
 elif env_base["config"] == "relwithdbg":

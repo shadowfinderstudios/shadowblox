@@ -22,39 +22,43 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "doctest.h"
+#include "Utils.hpp"
 
-#include "Sbx/Runtime/Base.hpp"
-#include "Sbx/Runtime/LuauRuntime.hpp"
+#include <string>
+
+#include "Luau/Compiler.h"
 #include "lua.h"
+
+#include "Sbx/Runtime/Stack.hpp"
 
 using namespace SBX;
 
-TEST_SUITE_BEGIN("Runtime/LuauRuntime");
+ExecOutput luaGD_exec(lua_State *L, const char *src) {
+	Luau::CompileOptions opts;
+	std::string bytecode = Luau::compile(src, opts);
 
-TEST_CASE("initialize") {
-	static int hit = 0;
-	LuauRuntime rt([](lua_State *L) {
-		hit++;
-	});
+	ExecOutput output;
 
-	CHECK_EQ(hit, LuauRuntime::VMMax);
+	if (luau_load(L, "=exec", bytecode.data(), bytecode.size(), 0) == 0) {
+		int status = lua_resume(L, nullptr, 0);
+		output.status = status;
 
-	auto LC = rt.GetVM(LuauRuntime::CoreVM);
-	SbxThreadData *udataCore = luaSBX_getthreaddata(LC);
-	REQUIRE_NE(udataCore, nullptr);
-	CHECK_EQ(udataCore->vmType, LuauRuntime::CoreVM);
-	CHECK_EQ(udataCore->identity, ElevatedGameScriptIdentity);
+		if (status == LUA_OK) {
+			return output;
+		} else if (status == LUA_YIELD) {
+			INFO("thread yielded");
+			return output;
+		}
 
-	auto LU = rt.GetVM(LuauRuntime::UserVM);
-	SbxThreadData *udataUser = luaSBX_getthreaddata(LU);
-	REQUIRE_NE(udataUser, nullptr);
-	CHECK_EQ(udataUser->vmType, LuauRuntime::UserVM);
-	CHECK_EQ(udataUser->identity, GameScriptIdentity);
+		std::string error = LuauStackOp<std::string>::Get(L, -1);
+		lua_pop(L, 1);
 
-	// Ensure acquisition of mutex
-	CHECK_FALSE(udataCore->mutex->try_lock());
-	CHECK_FALSE(udataUser->mutex->try_lock());
+		output.error = error;
+		return output;
+	}
+
+	output.error = LuauStackOp<std::string>::Get(L, -1);
+	lua_pop(L, 1);
+
+	return output;
 }
-
-TEST_SUITE_END();
