@@ -40,8 +40,7 @@
 namespace SBX {
 
 /**
- * Throw this error inside classes bound to Luau to trigger a luaL_error.
- *
+ * @brief Throw this error inside classes bound to Luau to trigger a luaL_error.
  * @see luaSBX_bindcxx
  */
 //
