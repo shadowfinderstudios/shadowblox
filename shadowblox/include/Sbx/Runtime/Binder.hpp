@@ -25,11 +25,13 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <exception>
 #include <functional>
 #include <string>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 
 #include "lua.h"
 #include "lualib.h"
@@ -62,46 +64,58 @@ struct FuncType;
 
 template <typename R, typename... Args>
 struct FuncType<R (*)(Args...)> {
+	using FuncPtrType = R (*)(Args...);
 	using ClassType = void;
 	using RetType = R;
 	using ArgTypes = std::tuple<Args...>;
 
-	static inline std::tuple<Args...> CheckArgs(lua_State *L, int start = 1) {
+	static inline R Invoke(lua_State *L, FuncPtrType func) {
 		// C++ FUN FACT:
 		// (): Parameter pack expansion may not be evaluated in order
 		// {}: Evaluated in order
 		// https://stackoverflow.com/a/42047998
-		return std::tuple{ luaSBX_checkarg<Args>(L, start)... };
+		int i = 1;
+		return std::apply(func, std::tuple{ luaSBX_checkarg<Args>(L, i)... });
 	}
 };
 
 template <typename T, typename R, typename... Args>
 struct FuncType<R (T::*)(Args...)> {
+	using FuncPtrType = R (T::*)(Args...);
 	using ClassType = T;
 	using RetType = R;
 	using ArgTypes = std::tuple<Args...>;
 
-	static inline T *CheckThis(lua_State *L) {
-		return LuauStackOp<T *>::Check(L, 1);
+	template <size_t... N>
+	static inline R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...>) {
+		int i = 2;
+		auto self = LuauStackOp<T *>::Check(L, 1);
+		std::tuple args{ luaSBX_checkarg<Args>(L, i)... };
+		return std::invoke(func, self, std::get<N>(args)...);
 	}
 
-	static inline std::tuple<Args...> CheckArgs(lua_State *L, int start = 2) {
-		return std::tuple{ luaSBX_checkarg<Args>(L, start)... };
+	static inline R Invoke(lua_State *L, FuncPtrType func) {
+		return Invoke(L, func, std::make_index_sequence<sizeof...(Args)>());
 	}
 };
 
 template <typename T, typename R, typename... Args>
 struct FuncType<R (T::*)(Args...) const> {
+	using FuncPtrType = R (T::*)(Args...) const;
 	using ClassType = T;
 	using RetType = R;
 	using ArgTypes = std::tuple<Args...>;
 
-	static inline const T *CheckThis(lua_State *L) {
-		return LuauStackOp<T *>::Check(L, 1);
+	template <size_t... N>
+	static inline R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...>) {
+		int i = 2;
+		auto self = LuauStackOp<T *>::Check(L, 1);
+		std::tuple args{ luaSBX_checkarg<Args>(L, i)... };
+		return std::invoke(func, self, std::get<N>(args)...);
 	}
 
-	static inline std::tuple<Args...> CheckArgs(lua_State *L, int start = 2) {
-		return std::tuple{ luaSBX_checkarg<Args>(L, start)... };
+	static inline R Invoke(lua_State *L, FuncPtrType func) {
+		return Invoke(L, func, std::make_index_sequence<sizeof...(Args)>());
 	}
 };
 
@@ -131,26 +145,12 @@ int luaSBX_bindcxx(lua_State *L) {
 	luaSBX_checkcapability(L, capability, action.c_str());
 
 	try {
-		if constexpr (std::is_same<typename FuncType<TF>::ClassType, void>()) {
-			// Static and non-member functions
-			if constexpr (std::is_same<typename FuncType<TF>::RetType, void>()) {
-				std::apply(F, FuncType<TF>::CheckArgs(L));
-				return 0;
-			} else {
-				LuauStackOp<typename FuncType<TF>::RetType>::Push(L, std::apply(F, FuncType<TF>::CheckArgs(L)));
-				return 1;
-			}
+		if constexpr (std::is_same<typename FuncType<TF>::RetType, void>()) {
+			FuncType<TF>::Invoke(L, F);
+			return 0;
 		} else {
-			// Member functions
-			// https://stackoverflow.com/a/69694086
-			auto *self = FuncType<TF>::CheckThis(L);
-			if constexpr (std::is_same<typename FuncType<TF>::RetType, void>()) {
-				std::apply(std::bind_front(F, self), FuncType<TF>::CheckArgs(L));
-				return 0;
-			} else {
-				LuauStackOp<typename FuncType<TF>::RetType>::Push(L, std::apply(std::bind_front(F, self), FuncType<TF>::CheckArgs(L)));
-				return 1;
-			}
+			LuauStackOp<typename FuncType<TF>::RetType>::Push(L, FuncType<TF>::Invoke(L, F));
+			return 1;
 		}
 	} catch (LuauClassError &e) {
 		luaL_error(L, "%s", e.what());
