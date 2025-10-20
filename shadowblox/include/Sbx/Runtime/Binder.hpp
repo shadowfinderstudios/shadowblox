@@ -42,19 +42,19 @@
 namespace SBX {
 
 /**
- * @brief Throw this error inside classes bound to Luau to trigger a luaL_error.
+ * @brief Throw this error inside functions bound to Luau to trigger a
+ * luaL_error.
  * @see luaSBX_bindcxx
  */
-//
-class LuauClassError : public std::exception {};
+class LuauBinderError : public std::exception {};
 
 template <typename T>
-T luaSBX_checkarg(lua_State *L, int &index) {
+inline T luaSBX_checkarg(lua_State *L, int &index) {
 	return LuauStackOp<T>::Check(L, index++);
 }
 
 template <>
-lua_State *luaSBX_checkarg<lua_State *>(lua_State *L, int &index) {
+inline lua_State *luaSBX_checkarg<lua_State *>(lua_State *L, int &index) {
 	return L;
 }
 
@@ -131,7 +131,7 @@ struct StringLiteral {
 
 /**
  * A template function that converts a C++ function to a function directly
- * bindable to Luau (lua_CFunction).
+ * bindable to Luau (`lua_CFunction`).
  *
  * @tparam name       The name of the function to use for capability checks.
  * @tparam F          The function. Can be a non-member, static member, const
@@ -141,8 +141,10 @@ struct StringLiteral {
  */
 template <StringLiteral name, auto F, SbxCapability capability, typename TF = decltype(F)>
 int luaSBX_bindcxx(lua_State *L) {
-	static std::string action = std::string("call '") + name.value + '\'';
-	luaSBX_checkcapability(L, capability, action.c_str());
+	if constexpr (capability != NoneSecurity) {
+		static std::string action = std::string("call '") + name.value + '\'';
+		luaSBX_checkcapability(L, capability, action.c_str());
+	}
 
 	try {
 		if constexpr (std::is_same<typename FuncType<TF>::RetType, void>()) {
@@ -152,7 +154,7 @@ int luaSBX_bindcxx(lua_State *L) {
 			LuauStackOp<typename FuncType<TF>::RetType>::Push(L, FuncType<TF>::Invoke(L, F));
 			return 1;
 		}
-	} catch (LuauClassError &e) {
+	} catch (LuauBinderError &e) {
 		luaL_error(L, "%s", e.what());
 	}
 }

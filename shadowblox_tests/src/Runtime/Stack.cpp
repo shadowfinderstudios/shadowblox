@@ -112,6 +112,18 @@ TEST_CASE("udata") {
 	TestStruct x{ 42 };
 	testStackOp<TestStruct>(L, x);
 
+	LuauStackOp<TestStruct *>::Push(L, &x);
+
+	CHECK(LuauStackOp<TestStruct *>::Is(L, -1));
+
+	TestStruct *ptr = LuauStackOp<TestStruct *>::Get(L, -1);
+	TestStruct *checkPtr = LuauStackOp<TestStruct *>::Check(L, -1);
+	REQUIRE_NE(ptr, nullptr);
+	CHECK_EQ(ptr, checkPtr);
+	CHECK_EQ(ptr->value, 42);
+
+	lua_pop(L, 1);
+
 	luaSBX_close(L);
 }
 

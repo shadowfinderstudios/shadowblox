@@ -33,7 +33,11 @@ elif env_base["config"] == "relwithdbg":
 elif env_base["config"] == "release":
     env_base.Append(CCFLAGS=["-O3"])
 
+env_extern_base = env_base.Clone()
+env_base.Append(CCFLAGS=["-Wall"])
+
 Export("env_base")
+Export("env_extern_base")
 
 extern_includes = ["#extern/include/"]
 Export("extern_includes")

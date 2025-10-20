@@ -88,47 +88,52 @@ struct LuauStackOp<const char *> {
 		static mType Get(lua_State *L, int index);          \
 		static bool Is(lua_State *L, int index);            \
 		static mType Check(lua_State *L, int index);        \
+	};                                                      \
                                                             \
-		/* USERDATA */                                      \
+	template <>                                             \
+	struct LuauStackOp<mType *> {                           \
+		static void Push(lua_State *L, const mType *value); \
                                                             \
-		static mType *Alloc(lua_State *L);                  \
-		static mType *GetPtr(lua_State *L, int index);      \
-		static mType *CheckPtr(lua_State *L, int index);    \
+		static mType *Get(lua_State *L, int index);         \
+		static bool Is(lua_State *L, int index);            \
+		static mType *Check(lua_State *L, int index);       \
 	};
 
 #define UDATA_STACK_OP_IMPL(mType, mMetatableName, mTag, mDtor)                                               \
-	mType *LuauStackOp<mType>::Alloc(lua_State *L) {                                                          \
+	void LuauStackOp<mType *>::Push(lua_State *L, const mType *value) {                                       \
+		LuauStackOp<mType>::Push(L, *value);                                                                  \
+	}                                                                                                         \
+                                                                                                              \
+	void LuauStackOp<mType>::Push(lua_State *L, const mType &value) {                                         \
 		/* FIXME: Shouldn't happen every time, but probably is fast */                                        \
 		lua_setuserdatadtor(L, mTag, mDtor);                                                                  \
                                                                                                               \
 		mType *udata = reinterpret_cast<mType *>(lua_newuserdatataggedwithmetatable(L, sizeof(mType), mTag)); \
 		new (udata) mType();                                                                                  \
-                                                                                                              \
-		return udata;                                                                                         \
-	}                                                                                                         \
-                                                                                                              \
-	void LuauStackOp<mType>::Push(lua_State *L, const mType &value) {                                         \
-		mType *udata = LuauStackOp<mType>::Alloc(L);                                                          \
 		*udata = value;                                                                                       \
 	}                                                                                                         \
                                                                                                               \
-	bool LuauStackOp<mType>::Is(lua_State *L, int index) {                                                    \
+	bool LuauStackOp<mType *>::Is(lua_State *L, int index) {                                                  \
 		return lua_touserdatatagged(L, index, mTag);                                                          \
 	}                                                                                                         \
                                                                                                               \
-	mType *LuauStackOp<mType>::GetPtr(lua_State *L, int index) {                                              \
+	bool LuauStackOp<mType>::Is(lua_State *L, int index) {                                                    \
+		return LuauStackOp<mType *>::Is(L, index);                                                            \
+	}                                                                                                         \
+                                                                                                              \
+	mType *LuauStackOp<mType *>::Get(lua_State *L, int index) {                                               \
 		return reinterpret_cast<mType *>(lua_touserdatatagged(L, index, mTag));                               \
 	}                                                                                                         \
                                                                                                               \
 	mType LuauStackOp<mType>::Get(lua_State *L, int index) {                                                  \
-		mType *udata = LuauStackOp<mType>::GetPtr(L, index);                                                  \
+		mType *udata = LuauStackOp<mType *>::Get(L, index);                                                   \
 		if (!udata)                                                                                           \
 			return mType();                                                                                   \
                                                                                                               \
 		return *udata;                                                                                        \
 	}                                                                                                         \
                                                                                                               \
-	mType *LuauStackOp<mType>::CheckPtr(lua_State *L, int index) {                                            \
+	mType *LuauStackOp<mType *>::Check(lua_State *L, int index) {                                             \
 		void *udata = lua_touserdatatagged(L, index, mTag);                                                   \
 		if (!udata)                                                                                           \
 			luaL_typeerrorL(L, index, mMetatableName);                                                        \
@@ -137,7 +142,7 @@ struct LuauStackOp<const char *> {
 	}                                                                                                         \
                                                                                                               \
 	mType LuauStackOp<mType>::Check(lua_State *L, int index) {                                                \
-		return *LuauStackOp<mType>::CheckPtr(L, index);                                                       \
+		return *LuauStackOp<mType *>::Check(L, index);                                                        \
 	}
 
 #define NO_DTOR [](lua_State *, void *) {}

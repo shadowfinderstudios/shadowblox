@@ -1,8 +1,8 @@
 # -*- mode: python -*-
 
-Import("env_base")
+Import("env_extern_base")
 
-env = env_base.Clone()
+env = env_extern_base.Clone()
 
 luau_dir = "#extern/luau/"
 luau_includes = [
