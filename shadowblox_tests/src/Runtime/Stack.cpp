@@ -32,7 +32,6 @@
 #include "lualib.h" // NOLINT
 
 #include "Sbx/Runtime/Base.hpp"
-#include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
 using namespace SBX;
@@ -89,7 +88,7 @@ static inline void testStackOp(lua_State *L, U value) {
 }
 
 TEST_CASE("basic") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, AnonymousIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, AnonymousIdentity);
 
 	testStackOp<bool>(L, true);
 	testStackOp<int>(L, 12);
@@ -99,7 +98,7 @@ TEST_CASE("basic") {
 }
 
 TEST_CASE("int64") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, AnonymousIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, AnonymousIdentity);
 
 	SUBCASE("|x| <= 2^53") {
 		int64_t i = 9007199254740992;
@@ -123,7 +122,7 @@ TEST_CASE("int64") {
 }
 
 TEST_CASE("udata") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, AnonymousIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, AnonymousIdentity);
 
 	lua_newtable(L);
 	lua_setreadonly(L, -1, true);

@@ -32,7 +32,6 @@
 
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/ClassBinder.hpp"
-#include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 #include "Utils.hpp"
 
@@ -96,7 +95,7 @@ UDATA_STACK_OP_IMPL(TestStruct2, "SbxTests.TestStruct2", Test1Udata, NO_DTOR);
 TEST_CASE("example") {
 	using Binder = LuauClassBinder<TestStruct2>;
 
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 
 	Binder::Init("TestStruct", "SbxTests.TestStruct", Test1Udata);

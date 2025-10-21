@@ -25,7 +25,6 @@
 #include "doctest.h"
 
 #include "Sbx/Runtime/Base.hpp"
-#include "Sbx/Runtime/LuauRuntime.hpp"
 #include "lua.h"
 
 using namespace SBX;
@@ -33,18 +32,19 @@ using namespace SBX;
 TEST_SUITE_BEGIN("Runtime/Base");
 
 TEST_CASE("newstate") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	REQUIRE_NE(L, nullptr);
+	CHECK_EQ(lua_gettop(L), 0);
 
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	CHECK_EQ(udata->vmType, LuauRuntime::CoreVM);
+	CHECK_EQ(udata->vmType, CoreVM);
 	CHECK_EQ(udata->identity, ElevatedGameScriptIdentity);
 
 	luaSBX_close(L);
 }
 
 TEST_CASE("newthread") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	REQUIRE_NE(L, nullptr);
 
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
@@ -82,7 +82,7 @@ TEST_CASE("newthread") {
 }
 
 TEST_CASE("permissions") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	REQUIRE_NE(L, nullptr);
 
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
@@ -99,6 +99,43 @@ TEST_CASE("permissions") {
 
 	udata->identity = COMIdentity;
 	CHECK(luaSBX_iscapability(L, NotAccessibleSecurity));
+
+	luaSBX_close(L);
+}
+
+TEST_CASE("registry") {
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	REQUIRE_NE(L, nullptr);
+
+	auto push = [](lua_State *L, void *ptr) {
+		lua_newuserdata(L, 1);
+	};
+
+	SUBCASE("strong") {
+		CHECK(luaSBX_pushregistry(L, nullptr, push, false));
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, false));
+		CHECK_EQ(lua_gettop(L), 2);
+
+		CHECK(lua_equal(L, -2, -1));
+		lua_pop(L, 2);
+		lua_gc(L, LUA_GCCOLLECT, 0);
+
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, false));
+		lua_pop(L, 1);
+	}
+
+	SUBCASE("weak") {
+		CHECK(luaSBX_pushregistry(L, nullptr, push, true));
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, true));
+		CHECK_EQ(lua_gettop(L), 2);
+
+		CHECK(lua_equal(L, -2, -1));
+		lua_pop(L, 2);
+		lua_gc(L, LUA_GCCOLLECT, 0);
+
+		CHECK(luaSBX_pushregistry(L, nullptr, push, false));
+		lua_pop(L, 1);
+	}
 
 	luaSBX_close(L);
 }

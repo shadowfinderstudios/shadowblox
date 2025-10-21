@@ -81,14 +81,14 @@ ThreadHandle LuauRuntime::GetVM(VMType type) {
 
 void LuauRuntime::GCStep(const uint32_t *step, double delta) {
 	for (int i = 0; i < VMMax; i++) {
-		ThreadHandle L = GetVM(VMType(i));
+		auto L = GetVM(VMType(i));
 		lua_gc(L, LUA_GCSTEP, step[i] * delta);
 	}
 }
 
 void LuauRuntime::GCSize(int32_t *outBuffer) {
 	for (int i = 0; i < VMMax; i++) {
-		ThreadHandle L = GetVM(VMType(i));
+		auto L = GetVM(VMType(i));
 		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
 	}
 }

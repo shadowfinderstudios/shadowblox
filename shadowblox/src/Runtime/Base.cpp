@@ -32,7 +32,6 @@
 #include "lua.h"
 #include "lualib.h"
 
-#include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
 namespace SBX {
@@ -75,7 +74,7 @@ static void luaSBX_userthread(lua_State *LP, lua_State *L) {
 	}
 }
 
-lua_State *luaSBX_newstate(LuauRuntime::VMType vmType, SbxIdentity defaultIdentity) {
+lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	lua_State *L = lua_newstate(luaSBX_alloc, nullptr);
 
 	// Base libraries
@@ -89,6 +88,23 @@ lua_State *luaSBX_newstate(LuauRuntime::VMType vmType, SbxIdentity defaultIdenti
 
 	lua_Callbacks *callbacks = lua_callbacks(L);
 	callbacks->userthread = luaSBX_userthread;
+
+	// Strong value object registry
+	lua_newtable(L);
+	udata->objRegistry = lua_ref(L, -1);
+	lua_pop(L, 1);
+
+	lua_newtable(L);
+
+	// Weak value object registry
+	lua_newtable(L);
+	lua_pushstring(L, "v");
+	lua_setfield(L, -2, "__mode");
+	lua_setreadonly(L, -1, true);
+	lua_setmetatable(L, -2);
+
+	udata->weakObjRegistry = lua_ref(L, -1);
+	lua_pop(L, 1);
 
 	return L;
 }
@@ -167,6 +183,27 @@ void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *
 				L, "The current identity (%d) cannot %s (lacking permission %d)",
 				udata->identity, actionDesc, permId);
 	}
+}
+
+bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, void *ptr), bool weak) {
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	lua_getref(L, weak ? udata->weakObjRegistry : udata->objRegistry);
+	lua_pushlightuserdata(L, ptr);
+	lua_gettable(L, -2);
+
+	bool res = lua_isnil(L, -1);
+
+	if (res) {
+		lua_pop(L, 1); // nil
+
+		push(L, ptr);
+		lua_pushlightuserdata(L, ptr);
+		lua_pushvalue(L, -2);
+		lua_settable(L, -4);
+	}
+
+	lua_remove(L, -2); // table
+	return res;
 }
 
 } //namespace SBX

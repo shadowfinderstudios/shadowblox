@@ -31,7 +31,6 @@
 
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/Binder.hpp"
-#include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 #include "Utils.hpp"
 
@@ -54,7 +53,7 @@ std::tuple<int, bool, float, const char *> testTuple() {
 }
 
 TEST_CASE("static") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 
 	lua_pushcfunction(L, (luaSBX_bindcxx<"testRet", testRet, InternalTestSecurity>), "testRet");
@@ -123,7 +122,7 @@ STACK_OP_STATIC_PTR_DEF(TestClass);
 STATIC_PTR_STACK_OP_IMPL(TestClass, "SbxTests.TestClass", Test1Udata);
 
 TEST_CASE("class") {
-	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 
 	lua_newtable(L);

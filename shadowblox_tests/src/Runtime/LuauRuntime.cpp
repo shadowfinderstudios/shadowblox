@@ -24,9 +24,10 @@
 
 #include "doctest.h"
 
+#include "lua.h"
+
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/LuauRuntime.hpp"
-#include "lua.h"
 
 using namespace SBX;
 
@@ -38,18 +39,20 @@ TEST_CASE("initialize") {
 		hit++;
 	});
 
-	CHECK_EQ(hit, LuauRuntime::VMMax);
+	CHECK_EQ(hit, VMMax);
 
-	auto LC = rt.GetVM(LuauRuntime::CoreVM);
+	auto LC = rt.GetVM(CoreVM);
 	SbxThreadData *udataCore = luaSBX_getthreaddata(LC);
 	REQUIRE_NE(udataCore, nullptr);
-	CHECK_EQ(udataCore->vmType, LuauRuntime::CoreVM);
+	CHECK_EQ(lua_gettop(LC), 0);
+	CHECK_EQ(udataCore->vmType, CoreVM);
 	CHECK_EQ(udataCore->identity, ElevatedGameScriptIdentity);
 
-	auto LU = rt.GetVM(LuauRuntime::UserVM);
+	auto LU = rt.GetVM(UserVM);
 	SbxThreadData *udataUser = luaSBX_getthreaddata(LU);
 	REQUIRE_NE(udataUser, nullptr);
-	CHECK_EQ(udataUser->vmType, LuauRuntime::UserVM);
+	CHECK_EQ(lua_gettop(LU), 0);
+	CHECK_EQ(udataUser->vmType, UserVM);
 	CHECK_EQ(udataUser->identity, GameScriptIdentity);
 
 	// Ensure acquisition of mutex

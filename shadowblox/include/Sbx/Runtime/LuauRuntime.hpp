@@ -26,7 +26,9 @@
 
 #include <cstdint>
 
-struct lua_State;
+#include "lua.h"
+
+#include "Sbx/Runtime/Base.hpp"
 
 namespace SBX {
 
@@ -34,13 +36,6 @@ class ThreadHandle;
 
 class LuauRuntime {
 public:
-	enum VMType : uint8_t {
-		CoreVM = 0,
-		UserVM,
-
-		VMMax
-	};
-
 	LuauRuntime(void (*initCallback)(lua_State *));
 	~LuauRuntime();
 

@@ -28,7 +28,7 @@
 #include <memory>
 #include <mutex>
 
-#include "Sbx/Runtime/LuauRuntime.hpp"
+#include "lua.h"
 
 #define luaSBX_propwriteonlyerror(L, propertyName) luaL_error(L, "%s cannot be read", propertyName)
 #define luaSBX_nogettererror(L, propertyName, className) luaL_error(L, "%s is not a valid member of %s", propertyName, className)
@@ -87,17 +87,27 @@ enum SbxCapability {
 	UnknownSecurity = 1 << 20
 };
 
+enum VMType : uint8_t {
+	CoreVM = 0,
+	UserVM,
+
+	VMMax
+};
+
 struct SbxThreadData {
-	LuauRuntime::VMType vmType = LuauRuntime::VMMax;
+	VMType vmType = VMMax;
 	SbxIdentity identity = AnonymousIdentity;
 	int32_t additionalCapability = 0;
 	std::shared_ptr<std::mutex> mutex;
 	uint64_t interruptDeadline = 0;
 
+	int objRegistry = LUA_NOREF;
+	int weakObjRegistry = LUA_NOREF;
+
 	void *userdata = nullptr;
 };
 
-lua_State *luaSBX_newstate(LuauRuntime::VMType vmType, SbxIdentity defaultIdentity);
+lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity);
 lua_State *luaSBX_newthread(lua_State *L, SbxIdentity identity);
 SbxThreadData *luaSBX_getthreaddata(lua_State *L);
 void luaSBX_close(lua_State *L);
@@ -106,5 +116,7 @@ int32_t identityToCapabilities(SbxIdentity identity);
 
 bool luaSBX_iscapability(lua_State *L, SbxCapability capability);
 void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *actionDesc);
+
+bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, void *ptr), bool weak);
 
 } //namespace SBX
