@@ -30,6 +30,15 @@
 
 #include "Sbx/Runtime/LuauRuntime.hpp"
 
+#define luaSBX_propwriteonlyerror(L, propertyName) luaL_error(L, "%s cannot be read", propertyName)
+#define luaSBX_nogettererror(L, propertyName, className) luaL_error(L, "%s is not a valid member of %s", propertyName, className)
+#define luaSBX_propreadonlyerror(L, propertyName) luaL_error(L, "%s cannot be assigned to", propertyName)
+#define luaSBX_nosettererror(L, propertyName) luaSBX_propreadonlyerror(L, propertyName)
+#define luaSBX_nonamecallatomerror(L) luaL_error(L, "no namecallatom")
+#define luaSBX_aritherror1type(L, op, type) luaL_error(L, "attempt to perform arithmetic (%s) on %s", op, type)
+#define luaSBX_aritherror2type(L, op, lhsType, rhsType) luaL_error(L, "attempt to perform arithmetic (%s) on %s and %s", op, lhsType, rhsType)
+#define luaSBX_nomethoderror(L, methodName, className) luaSBX_nogettererror(L, methodName, className)
+
 namespace SBX {
 
 enum UdataTag : uint8_t {

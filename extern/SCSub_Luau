@@ -18,6 +18,8 @@ for subdir in luau_includes:
     sources += Glob(f"{luau_dir}{subdir}/src/*.cpp")
 
 includes = [luau_dir + subdir + "/include/" for subdir in luau_includes]
+# I know what I am doing
+includes += [luau_dir + subdir + "/src/" for subdir in luau_includes]
 env.Append(CPPPATH=includes)
 env.Append(CPPPATH=[luau_dir + subdir + "/src/" for subdir in luau_includes])
 

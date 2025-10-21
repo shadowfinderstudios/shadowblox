@@ -69,7 +69,7 @@ static inline void testStackOp(lua_State *L, U value) {
 	CHECK(LuauStackOp<std::optional<T>>::Is(L, -1));
 	CHECK_EQ(lua_gettop(L), top + 1);
 
-	CHECK_EQ(*LuauStackOp<std::optional<T>>::Get(L, -1), value);
+	CHECK_EQ(LuauStackOp<std::optional<T>>::Get(L, -1), value);
 	CHECK_EQ(lua_gettop(L), top + 1);
 
 	lua_pop(L, 1);

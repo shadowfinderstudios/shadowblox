@@ -24,6 +24,9 @@
 
 #include "doctest.h"
 
+#include <string>
+#include <tuple>
+
 #include "lua.h"
 
 #include "Sbx/Runtime/Base.hpp"
@@ -46,6 +49,10 @@ void testVoid(float a, lua_State *L, float b) {
 	CHECK_EQ(lua_gettop(L), 2);
 }
 
+std::tuple<int, bool, float, const char *> testTuple() {
+	return { 1, true, 0.25, "Hello" };
+}
+
 TEST_CASE("static") {
 	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
@@ -56,11 +63,27 @@ TEST_CASE("static") {
 	lua_pushcfunction(L, (luaSBX_bindcxx<"testVoid", testVoid, InternalTestSecurity>), "testVoid");
 	lua_setglobal(L, "testVoid");
 
+	lua_pushcfunction(L, (luaSBX_bindcxx<"testTuple", testTuple, InternalTestSecurity>), "testTuple");
+	lua_setglobal(L, "testTuple");
+
 	SUBCASE("working") {
 		CHECK_EVAL_EQ(L, "return testRet(12, 5)", int, 60);
 		CHECK_EVAL_EQ(L, "return testRet(6, 8.2)", int, 48);
 
 		CHECK_EVAL_OK(L, "testVoid(0.5, 0.25)");
+
+		EVAL_THEN(L, "return testTuple()", {
+			REQUIRE_EQ(lua_gettop(L), 4);
+			REQUIRE(lua_isnumber(L, 1));
+			REQUIRE(lua_isboolean(L, 2));
+			REQUIRE(lua_isnumber(L, 3));
+			REQUIRE_EQ(lua_type(L, 4), LUA_TSTRING);
+
+			CHECK_EQ(lua_tonumber(L, 1), 1);
+			CHECK_EQ(lua_toboolean(L, 2), true);
+			CHECK_EQ(lua_tonumber(L, 3), 0.25);
+			CHECK_EQ(std::string(lua_tostring(L, 4)), "Hello");
+		});
 	}
 
 	SUBCASE("missing arg") {
@@ -97,7 +120,7 @@ struct TestClass {
 };
 
 STACK_OP_STATIC_PTR_DEF(TestClass);
-STATIC_PTR_STACK_OP_IMPL(TestClass, "SbxTests.TestClass", Test2Udata);
+STATIC_PTR_STACK_OP_IMPL(TestClass, "SbxTests.TestClass", Test1Udata);
 
 TEST_CASE("class") {
 	lua_State *L = luaSBX_newstate(LuauRuntime::CoreVM, ElevatedGameScriptIdentity);
@@ -105,7 +128,7 @@ TEST_CASE("class") {
 
 	lua_newtable(L);
 	lua_setreadonly(L, -1, true);
-	lua_setuserdatametatable(L, Test2Udata);
+	lua_setuserdatametatable(L, Test1Udata);
 
 	lua_pushcfunction(L, (luaSBX_bindcxx<"TestFuncConst", &TestClass::TestFuncConst, InternalTestSecurity>), "TestFuncConst");
 	lua_setglobal(L, "TestFuncConst");

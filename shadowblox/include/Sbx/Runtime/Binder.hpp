@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <functional>
 #include <string>
@@ -129,27 +130,71 @@ struct StringLiteral {
 	}
 };
 
+// https://stackoverflow.com/a/48458312
+template <typename>
+struct IsTuple : std::false_type {};
+
+template <typename... T>
+struct IsTuple<std::tuple<T...>> : std::true_type {
+	template <size_t... N>
+	static inline int Push(lua_State *L, const std::tuple<T...> &val, std::index_sequence<N...>) {
+		(LuauStackOp<T>::Push(L, std::get<N>(val)), ...);
+		return sizeof...(T);
+	}
+
+	static inline int Push(lua_State *L, const std::tuple<T...> &val) {
+		return Push(L, val, std::make_index_sequence<sizeof...(T)>());
+	}
+};
+
+enum BindPurpose : uint8_t {
+	BindFunction,
+	BindGetter,
+	BindSetter,
+	BindOperator
+};
+
 /**
- * A template function that converts a C++ function to a function directly
- * bindable to Luau (`lua_CFunction`).
+ * @brief A template function that converts a C++ function to a function
+ * directly bindable to Luau (`lua_CFunction`).
  *
- * @tparam name       The name of the function to use for capability checks.
- * @tparam F          The function. Can be a non-member, static member, const
- *                    member, or non-const member function.
+ * The function may be a non-member, static member, const member, or non-const
+ * member function. If the function returns a `std::tuple`, it will be pushed
+ * to Luau as separate return values.
+ *
+ * @tparam name       The name of the function/property to use for capability
+ *                    checks.
+ * @tparam F          The function.
  * @tparam capability Capabilities required to run this function.
  * @tparam TF         The type of the function. Automatically populated.
+ * @tparam purpose    The purpose of this bound function (e.g., function or
+ *                    property getter/setter). The capability error message is
+ *                    adjusted accordingly.
  */
-template <StringLiteral name, auto F, SbxCapability capability, typename TF = decltype(F)>
+template <StringLiteral name, auto F, SbxCapability capability, BindPurpose purpose = BindFunction, typename TF = decltype(F)>
 int luaSBX_bindcxx(lua_State *L) {
 	if constexpr (capability != NoneSecurity) {
-		static std::string action = std::string("call '") + name.value + '\'';
-		luaSBX_checkcapability(L, capability, action.c_str());
+		static const char *purposes[] = {
+			"call",
+			"write",
+			"read",
+			"use operator"
+		};
+
+		if constexpr (name.value[0]) {
+			static std::string action = std::string(purposes[purpose]) + " '" + name.value + '\'';
+			luaSBX_checkcapability(L, capability, action.c_str());
+		} else {
+			luaSBX_checkcapability(L, capability, purposes[purpose]);
+		}
 	}
 
 	try {
 		if constexpr (std::is_same<typename FuncType<TF>::RetType, void>()) {
 			FuncType<TF>::Invoke(L, F);
 			return 0;
+		} else if constexpr (IsTuple<typename FuncType<TF>::RetType>::value) {
+			return IsTuple<typename FuncType<TF>::RetType>::Push(L, FuncType<TF>::Invoke(L, F));
 		} else {
 			LuauStackOp<typename FuncType<TF>::RetType>::Push(L, FuncType<TF>::Invoke(L, F));
 			return 1;
