@@ -49,7 +49,7 @@ struct TestStruct {
 };
 
 STACK_OP_UDATA_DEF(TestStruct);
-UDATA_STACK_OP_IMPL(TestStruct, "SbxTests.TestStruct", Test1Udata, NO_DTOR);
+UDATA_STACK_OP_IMPL(TestStruct, "TestStruct", "SbxTests.TestStruct", Test1Udata, NO_DTOR);
 
 template <typename T, typename U>
 static inline void testStackOp(lua_State *L, U value) {

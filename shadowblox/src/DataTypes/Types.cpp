@@ -24,6 +24,8 @@
 
 #include "Sbx/DataTypes/Types.hpp"
 
+#include "lua.h"
+
 #include "Sbx/DataTypes/Enum.hpp"
 #include "Sbx/DataTypes/EnumItem.hpp"
 #include "Sbx/DataTypes/EnumTypes.gen.hpp"

@@ -30,14 +30,19 @@
 
 #include "lua.h"
 
-#define luaSBX_propwriteonlyerror(L, propertyName) luaL_error(L, "%s cannot be read", propertyName)
-#define luaSBX_nogettererror(L, propertyName, className) luaL_error(L, "%s is not a valid member of %s", propertyName, className)
-#define luaSBX_propreadonlyerror(L, propertyName) luaL_error(L, "%s cannot be assigned to", propertyName)
-#define luaSBX_nosettererror(L, propertyName) luaSBX_propreadonlyerror(L, propertyName)
-#define luaSBX_nonamecallatomerror(L) luaL_error(L, "no namecallatom")
+#define luaSBX_noproperror(L, propertyName, className) luaL_error(L, "%s is not a valid member of %s", propertyName, className)
+#define luaSBX_propwriteonlyerror(L, propertyName, className) luaL_error(L, "%s member of %s is write-only and cannot be cannot be read", propertyName, className)
+#define luaSBX_propreadonlyerror(L, propertyName, className) luaL_error(L, "%s member of %s is read-only and cannot be assigned to", propertyName, className)
+
 #define luaSBX_aritherror1type(L, op, type) luaL_error(L, "attempt to perform arithmetic (%s) on %s", op, type)
 #define luaSBX_aritherror2type(L, op, lhsType, rhsType) luaL_error(L, "attempt to perform arithmetic (%s) on %s and %s", op, lhsType, rhsType)
-#define luaSBX_nomethoderror(L, methodName, className) luaSBX_nogettererror(L, methodName, className)
+
+#define luaSBX_nonamecallatomerror(L) luaL_error(L, "no namecallatom")
+#define luaSBX_nomethoderror(L, methodName, className) luaSBX_noproperror(L, methodName, className)
+
+#define luaSBX_missingselferror(L, func) luaL_error(L, "Expected ':' not '.' calling member function %s", func)
+#define luaSBX_missingargerror(L, num) luaL_error(L, "Argument %d missing or nil", num)
+#define luaSBX_casterror(L, from, to) luaL_error(L, "Unable to cast %s to %s", from, to)
 
 namespace SBX {
 

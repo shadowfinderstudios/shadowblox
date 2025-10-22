@@ -63,6 +63,6 @@ std::string EnumItem::ToString() const {
 
 namespace SBX {
 
-REGISTRY_PTR_STACK_OP_IMPL(DataTypes::EnumItem, "EnumItem", EnumItemUdata, false);
+REGISTRY_PTR_STACK_OP_IMPL(DataTypes::EnumItem, "EnumItem", "EnumItem", EnumItemUdata, false);
 
 }

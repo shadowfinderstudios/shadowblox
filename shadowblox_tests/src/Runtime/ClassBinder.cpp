@@ -22,6 +22,9 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
+#include "Sbx/DataTypes/Enum.hpp"
+#include "Sbx/DataTypes/EnumItem.hpp"
+#include "Sbx/DataTypes/Types.hpp"
 #include "doctest.h"
 
 #include <optional>
@@ -30,6 +33,8 @@
 #include "ltm.h"
 #include "lua.h"
 
+#include "Sbx/DataTypes/EnumTypes.gen.hpp"
+#include "Sbx/DataTypes/Types.hpp"
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/ClassBinder.hpp"
 #include "Sbx/Runtime/Stack.hpp"
@@ -51,6 +56,14 @@ struct TestStruct2 {
 
 	TestStruct2(int num) :
 			num(num) {}
+
+	DataTypes::EnumAxis GetAxis() const {
+		return DataTypes::EnumAxis::Y;
+	}
+
+	void SetAxis(DataTypes::EnumAxis axis) {
+		num = static_cast<int>(axis);
+	}
 
 	int GetNum() const {
 		return num;
@@ -94,12 +107,13 @@ TestStruct2 operator*(const TestStruct2 &x, int y) {
 }
 
 STACK_OP_UDATA_DEF(TestStruct2);
-UDATA_STACK_OP_IMPL(TestStruct2, "SbxTests.TestStruct2", Test1Udata, NO_DTOR);
+UDATA_STACK_OP_IMPL(TestStruct2, "TestStruct", "SbxTests.TestStruct", Test1Udata, NO_DTOR);
 
 TEST_CASE("example") {
 	using Binder = LuauClassBinder<TestStruct2>;
 
 	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	DataTypes::luaSBX_opendatatypes(L);
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 
 	Binder::Init("TestStruct", "SbxTests.TestStruct", Test1Udata);
@@ -107,7 +121,9 @@ TEST_CASE("example") {
 	Binder::BindStaticMethod<"new", TestStruct2::New, NoneSecurity>();
 	Binder::BindMethod<"Square", &TestStruct2::Square, NoneSecurity>();
 	Binder::BindMethod<"SetNum", &TestStruct2::SetNum, InternalTestSecurity>();
+	Binder::BindMethod<"SetAxis", &TestStruct2::SetAxis, InternalTestSecurity>();
 	Binder::BindProperty<"Num", &TestStruct2::GetNum, NoneSecurity, &TestStruct2::SetNum, InternalTestSecurity>();
+	Binder::BindProperty<"Axis", &TestStruct2::GetAxis, NoneSecurity, &TestStruct2::SetAxis, InternalTestSecurity>();
 	Binder::BindPropertyReadOnly<"SqNum", &TestStruct2::Square, NoneSecurity>();
 	Binder::BindPropertyWriteOnly<"NumProxy", &TestStruct2::SetNum, InternalTestSecurity>();
 	Binder::BindToString<&TestStruct2::ToString>();
@@ -147,14 +163,15 @@ TEST_CASE("example") {
 			CHECK_EQ(lua_tonumber(L, -1), 25);
 		});
 
-		EVAL_THEN(L, R"ASDF(local x = TestStruct.new(5)
-x.NumProxy = 1
-return x
-)ASDF",
-				{
-					TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
-					CHECK_EQ(ts->num, 1);
-				});
+		EVAL_THEN(L, "local x = TestStruct.new(5); x.Num = 1; return x", {
+			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
+			CHECK_EQ(ts->num, 1);
+		});
+
+		EVAL_THEN(L, "local x = TestStruct.new(5); x.NumProxy = 1; return x", {
+			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
+			CHECK_EQ(ts->num, 1);
+		});
 
 		EVAL_THEN(L, "return TestStruct.new(21) + 21", {
 			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
@@ -173,18 +190,31 @@ return x
 			CHECK_EQ(ts->num, 26);
 		});
 
-		EVAL_THEN(L, "return TestStruct.new(21) * 2", {
-			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
-			CHECK_EQ(ts->num, 42);
-		});
+		CHECK_EVAL_EQ(L, "return (TestStruct.new(21) * 2).Num", int, 42);
 
 		EVAL_THEN(L, "return #(TestStruct.new(5))", {
 			CHECK_EQ(lua_tonumber(L, -1), 5);
 		});
+
+		EVAL_THEN(L, "local x = TestStruct.new(); x:SetAxis(Enum.Axis.Z); return x", {
+			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
+			CHECK_EQ(ts->num, static_cast<int>(DataTypes::EnumAxis::Z));
+		});
+
+		EVAL_THEN(L, "return TestStruct.new().Axis", {
+			DataTypes::EnumItem *item = LuauStackOp<DataTypes::EnumItem *>::Get(L, -1);
+			CHECK_EQ(item->GetName(), "Y");
+			CHECK_EQ(item->GetValue(), static_cast<int>(DataTypes::EnumAxis::Y));
+		});
+
+		EVAL_THEN(L, "local x = TestStruct.new(); x.Axis = Enum.Axis.Z; return x", {
+			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
+			CHECK_EQ(ts->num, static_cast<int>(DataTypes::EnumAxis::Z));
+		});
 	}
 
 	SUBCASE("invalid argument") {
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5):SetNum(nil)", "exec:1: invalid argument #2 (number expected, got nil)");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5):SetNum(nil)", "exec:1: Argument 1 missing or nil");
 	}
 
 	SUBCASE("invalid method") {
@@ -192,11 +222,11 @@ return x
 	}
 
 	SUBCASE("read-only") {
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5).SqNum = 9", "exec:1: SqNum cannot be assigned to");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5).SqNum = 9", "exec:1: SqNum member of TestStruct is read-only and cannot be assigned to");
 	}
 
 	SUBCASE("write-only") {
-		CHECK_EVAL_FAIL(L, "return TestStruct.new(5).NumProxy", "exec:1: NumProxy cannot be read");
+		CHECK_EVAL_FAIL(L, "return TestStruct.new(5).NumProxy", "exec:1: NumProxy member of TestStruct is write-only and cannot be cannot be read");
 	}
 
 	SUBCASE("nonexistent read") {
@@ -204,7 +234,11 @@ return x
 	}
 
 	SUBCASE("nonexistent write") {
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5).AHIHGIH = 9", "exec:1: AHIHGIH cannot be assigned to");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5).AHIHGIH = 9", "exec:1: AHIHGIH is not a valid member of TestStruct");
+	}
+
+	SUBCASE("wrong type") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5).Num = ''", "exec:1: Unable to assign property Num. int expected, got string");
 	}
 
 	SUBCASE("invalid operator overload") {
@@ -218,12 +252,44 @@ return x
 
 	SUBCASE("no permission to write") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5).Num = 9", "exec:1: The current identity (2) cannot read 'Num' (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5).Num = 9", "exec:1: The current identity (2) cannot write 'Num' (lacking permission 17)");
 	}
 
 	SUBCASE("no permission to use operator") {
 		udata->identity = GameScriptIdentity;
 		CHECK_EVAL_FAIL(L, "(TestStruct.new())()", "exec:1: The current identity (2) cannot use operator (lacking permission 17)");
+	}
+
+	SUBCASE("invalid enum property enum type") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new().Axis = Enum.AccessoryType.Unknown", "exec:1: Unable to assign property Axis. EnumItem of type Axis expected, got an EnumItem of type AccessoryType");
+	}
+
+	SUBCASE("invalid enum property type") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new().Axis = nil", "exec:1: Unable to assign property Axis. EnumItem, number, or string expected, got nil");
+	}
+
+	SUBCASE("invalid enum property int value") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new().Axis = 9999", "exec:1: Unable to assign property Axis. Invalid value 9999 for enum Axis");
+	}
+
+	SUBCASE("invalid enum property string value") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new().Axis = 'ahsoidghsaiodhgo'", "exec:1: Unable to assign property Axis. Invalid value \"ahsoidghsaiodhgo\" for enum Axis");
+	}
+
+	SUBCASE("invalid enum argument enum type") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new():SetAxis(Enum.AccessoryType.Unknown)", "exec:1: Unable to cast AccessoryType to Axis");
+	}
+
+	SUBCASE("invalid enum argument type") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new():SetAxis({})", "exec:1: Unable to cast table to Axis");
+	}
+
+	SUBCASE("invalid enum argument int value") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new():SetAxis(9999)", "exec:1: Unable to cast number to Axis");
+	}
+
+	SUBCASE("invalid enum argument string value") {
+		CHECK_EVAL_FAIL(L, "TestStruct.new():SetAxis('ahsoidghsaiodhgo')", "exec:1: Unable to cast string to Axis");
 	}
 
 	luaSBX_close(L);

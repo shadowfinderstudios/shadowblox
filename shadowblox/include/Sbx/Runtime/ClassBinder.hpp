@@ -392,7 +392,7 @@ private:
 		auto it = properties.find(propName);
 		if (it != properties.end()) {
 			if (!it->second.getter) {
-				luaSBX_propwriteonlyerror(L, propName);
+				luaSBX_propwriteonlyerror(L, propName, name);
 			}
 
 			lua_remove(L, 2);
@@ -405,7 +405,7 @@ private:
 			return 1;
 		}
 
-		luaSBX_nogettererror(L, propName, name);
+		luaSBX_noproperror(L, propName, name);
 	}
 
 	static int Newindex(lua_State *L) {
@@ -414,14 +414,14 @@ private:
 		auto it = properties.find(propName);
 		if (it != properties.end()) {
 			if (!it->second.setter) {
-				luaSBX_propreadonlyerror(L, propName);
+				luaSBX_propreadonlyerror(L, propName, name);
 			}
 
 			lua_remove(L, 2);
 			return it->second.setter(L);
 		}
 
-		luaSBX_nosettererror(L, propName);
+		luaSBX_noproperror(L, propName, name);
 	}
 
 	template <TMS type>

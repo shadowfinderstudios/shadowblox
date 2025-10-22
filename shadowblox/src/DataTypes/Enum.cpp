@@ -108,6 +108,6 @@ int Enum::IndexOverride(lua_State *L, const char *name) {
 
 namespace SBX {
 
-REGISTRY_PTR_STACK_OP_IMPL(DataTypes::Enum, "Enum", EnumUdata, false);
+REGISTRY_PTR_STACK_OP_IMPL(DataTypes::Enum, "Enum", "Enum", EnumUdata, false);
 
 }

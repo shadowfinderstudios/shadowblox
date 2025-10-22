@@ -37,21 +37,23 @@
 
 namespace SBX {
 
-#define BASIC_STACK_OP_IMPL(mType, mOpName, mIsName)                                                                 \
-	void LuauStackOp<mType>::Push(lua_State *L, const mType &value) { lua_push##mOpName(L, value); }                 \
-	mType LuauStackOp<mType>::Get(lua_State *L, int index) { return static_cast<mType>(lua_to##mOpName(L, index)); } \
-	bool LuauStackOp<mType>::Is(lua_State *L, int index) { return lua_is##mIsName(L, index); }                       \
-	mType LuauStackOp<mType>::Check(lua_State *L, int index) { return static_cast<mType>(luaL_check##mOpName(L, index)); }
+#define BASIC_STACK_OP_IMPL(type, name, opName, isName)                                                                \
+	void LuauStackOp<type>::Push(lua_State *L, const type &value) { lua_push##opName(L, value); }                      \
+	type LuauStackOp<type>::Get(lua_State *L, int index) { return static_cast<type>(lua_to##opName(L, index)); }       \
+	bool LuauStackOp<type>::Is(lua_State *L, int index) { return lua_is##isName(L, index); }                           \
+	type LuauStackOp<type>::Check(lua_State *L, int index) { return static_cast<type>(luaL_check##opName(L, index)); } \
+                                                                                                                       \
+	const std::string LuauStackOp<type>::NAME = name;
 
-BASIC_STACK_OP_IMPL(bool, boolean, boolean);
-BASIC_STACK_OP_IMPL(int, integer, number);
-BASIC_STACK_OP_IMPL(float, number, number);
-BASIC_STACK_OP_IMPL(double, number, number);
-BASIC_STACK_OP_IMPL(int8_t, number, number);
-BASIC_STACK_OP_IMPL(uint8_t, unsigned, number);
-BASIC_STACK_OP_IMPL(int16_t, number, number);
-BASIC_STACK_OP_IMPL(uint16_t, unsigned, number);
-BASIC_STACK_OP_IMPL(uint32_t, unsigned, number);
+BASIC_STACK_OP_IMPL(bool, "bool", boolean, boolean);
+BASIC_STACK_OP_IMPL(int, "int", integer, number);
+BASIC_STACK_OP_IMPL(float, "float", number, number);
+BASIC_STACK_OP_IMPL(double, "double", number, number);
+BASIC_STACK_OP_IMPL(int8_t, "int", number, number);
+BASIC_STACK_OP_IMPL(uint8_t, "int", unsigned, number);
+BASIC_STACK_OP_IMPL(int16_t, "int", number, number);
+BASIC_STACK_OP_IMPL(uint16_t, "int", unsigned, number);
+BASIC_STACK_OP_IMPL(uint32_t, "int", unsigned, number);
 
 /* 64-BIT INTEGER */
 
@@ -64,17 +66,17 @@ void LuauStackOp<int64_t>::InitMetatable(lua_State *L) {
 	lua_pushstring(L, "Int64");
 	lua_setfield(L, -2, "__type");
 
-#define INT64_OP_FUNC(mExp, mName, mRet)                                                                 \
+#define INT64_OP_FUNC(exp, name, ret)                                                                    \
 	lua_pushcfunction(                                                                                   \
 			L, [](lua_State *L) {                                                                        \
 				double d1 = lua_isnumber(L, 1) ? lua_tonumber(L, 1) : LuauStackOp<int64_t>::Check(L, 1); \
 				double d2 = lua_isnumber(L, 2) ? lua_tonumber(L, 2) : LuauStackOp<int64_t>::Check(L, 2); \
-				LuauStackOp<mRet>::Push(L, mExp);                                                        \
+				LuauStackOp<ret>::Push(L, exp);                                                          \
 				return 1;                                                                                \
 			},                                                                                           \
-			INT64_MT_NAME "." mName);                                                                    \
+			INT64_MT_NAME "." name);                                                                     \
                                                                                                          \
-	lua_setfield(L, -2, mName);
+	lua_setfield(L, -2, name);
 
 	INT64_OP_FUNC(d1 + d2, "__add", double)
 	INT64_OP_FUNC(d1 - d2, "__sub", double)
@@ -146,6 +148,8 @@ int64_t LuauStackOp<int64_t>::Check(lua_State *L, int index) {
 	return luaL_checknumber(L, index);
 }
 
+const std::string LuauStackOp<int64_t>::NAME = "int64";
+
 /* STRING */
 
 void LuauStackOp<std::string>::Push(lua_State *L, const std::string &value) {
@@ -164,9 +168,13 @@ std::string LuauStackOp<std::string>::Check(lua_State *L, int index) {
 	return luaL_checkstring(L, index);
 }
 
+const std::string LuauStackOp<std::string>::NAME = "string";
+
 void LuauStackOp<const char *>::Push(lua_State *L, const char *value) { lua_pushstring(L, value); }
 const char *LuauStackOp<const char *>::Get(lua_State *L, int index) { return lua_tostring(L, index); }
 bool LuauStackOp<const char *>::Is(lua_State *L, int index) { return lua_isstring(L, index); }
 const char *LuauStackOp<const char *>::Check(lua_State *L, int index) { return luaL_checkstring(L, index); }
+
+const std::string LuauStackOp<const char *>::NAME = "string";
 
 } //namespace SBX

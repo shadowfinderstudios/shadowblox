@@ -86,11 +86,11 @@ TEST_CASE("static") {
 	}
 
 	SUBCASE("missing arg") {
-		CHECK_EVAL_FAIL(L, "return testRet()", "exec:1: missing argument #1 to 'testRet' (number expected)");
+		CHECK_EVAL_FAIL(L, "return testRet()", "exec:1: Argument 1 missing or nil");
 	}
 
 	SUBCASE("wrong arg") {
-		CHECK_EVAL_FAIL(L, "testVoid(nil, nil)", "exec:1: invalid argument #1 to 'testVoid' (number expected, got nil)");
+		CHECK_EVAL_FAIL(L, "testVoid('', nil)", "exec:1: Unable to cast string to float");
 	}
 
 	SUBCASE("missing permission") {
@@ -119,7 +119,7 @@ struct TestClass {
 };
 
 STACK_OP_STATIC_PTR_DEF(TestClass);
-STATIC_PTR_STACK_OP_IMPL(TestClass, "SbxTests.TestClass", Test1Udata);
+STATIC_PTR_STACK_OP_IMPL(TestClass, "TestClass", "SbxTests.TestClass", Test1Udata);
 
 TEST_CASE("class") {
 	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
@@ -151,11 +151,11 @@ TEST_CASE("class") {
 	}
 
 	SUBCASE("invalid instance") {
-		CHECK_EVAL_FAIL(L, "TestFuncConst('a')", "exec:1: invalid argument #1 to 'TestFuncConst' (SbxTests.TestClass expected, got string)");
+		CHECK_EVAL_FAIL(L, "TestFuncConst('a')", "exec:1: Expected ':' not '.' calling member function TestFuncConst");
 	}
 
 	SUBCASE("invalid arg") {
-		CHECK_EVAL_FAIL(L, "TestFuncConst(inst, 1, nil)", "exec:1: invalid argument #3 to 'TestFuncConst' (number expected, got nil)");
+		CHECK_EVAL_FAIL(L, "TestFuncConst(inst, 1, nil)", "exec:1: Argument 2 missing or nil");
 	}
 
 	SUBCASE("missing permission") {
