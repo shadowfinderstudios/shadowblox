@@ -68,6 +68,10 @@ struct TestStruct2 {
 		return num;
 	}
 
+	std::string ToString() const {
+		return std::string("HELLO") + std::to_string(num);
+	}
+
 	void operator()(int inc) {
 		num += inc;
 	}
@@ -106,6 +110,7 @@ TEST_CASE("example") {
 	Binder::BindProperty<"Num", &TestStruct2::GetNum, NoneSecurity, &TestStruct2::SetNum, InternalTestSecurity>();
 	Binder::BindPropertyReadOnly<"SqNum", &TestStruct2::Square, NoneSecurity>();
 	Binder::BindPropertyWriteOnly<"NumProxy", &TestStruct2::SetNum, InternalTestSecurity>();
+	Binder::BindToString<&TestStruct2::ToString>();
 	Binder::BindCallOp<&TestStruct2::operator(), InternalTestSecurity>();
 	Binder::BindBinaryOp<TM_ADD, static_cast<TestStruct2 (*)(const TestStruct2 &, const TestStruct2 &)>(operator+)>(LuauStackOp<TestStruct2>::Is, LuauStackOp<TestStruct2>::Is);
 	Binder::BindBinaryOp<TM_ADD, static_cast<TestStruct2 (*)(const TestStruct2 &, int)>(operator+)>(LuauStackOp<TestStruct2>::Is, LuauStackOp<int>::Is);
@@ -160,6 +165,8 @@ return x
 			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
 			CHECK_EQ(ts->num, 42);
 		});
+
+		CHECK_EVAL_EQ(L, "return tostring(TestStruct.new(123))", std::string, "HELLO123");
 
 		EVAL_THEN(L, "local x = TestStruct.new(21); x(5); return x", {
 			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);

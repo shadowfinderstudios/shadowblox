@@ -15,3 +15,7 @@ includes = [ "*.cpp", "*.hpp" ]
 [formatter.py]
 command = "black"
 includes = [ "*.py", "*SConstruct", "*SCSub*" ]
+
+[formatter.luau]
+command = "stylua"
+includes = [ "*.luau" ]

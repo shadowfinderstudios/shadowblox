@@ -44,6 +44,10 @@ namespace SBX {
 enum UdataTag : uint8_t {
 	Int64Udata = 0,
 
+	EnumItemUdata,
+	EnumUdata,
+	EnumsUdata,
+
 	Test1Udata = 124,
 	Test2Udata = 125,
 	Test3Udata = 126,

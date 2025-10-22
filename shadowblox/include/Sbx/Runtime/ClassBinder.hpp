@@ -48,11 +48,12 @@ template <typename T>
 class LuauClassBinder {
 public:
 	using TypePredicate = bool (*)(lua_State *L, int index);
+	using IndexOverride = int (*)(lua_State *L, const char *name);
 
 	/**
 	 * @brief Initialize the class binder.
 	 *
-	 * @param newName          The name of this class.
+	 * @param newName          The name of this class. Must be non-empty.
 	 * @param newMetatableName The metatable name of this class.
 	 * @param newUdataTag      The userdata tag for this class. If negative, the
 	 *                         metatable is registered by name only.
@@ -61,6 +62,17 @@ public:
 		name = newName;
 		metatableName = newMetatableName;
 		udataTag = newUdataTag;
+	}
+
+	/**
+	 * @brief Returns whether the class has been previously initialized through
+	 * `Init`.
+	 *
+	 * @returns Initialization status.
+	 * @see Init
+	 */
+	static bool IsInitialized() {
+		return *name;
 	}
 
 	/**
@@ -110,6 +122,11 @@ public:
 
 		lua_pushcfunction(L, Index, nullptr);
 		lua_setfield(L, -2, "__index");
+
+		if (tostringFunc) {
+			lua_pushcfunction(L, tostringFunc, nullptr);
+			lua_setfield(L, -2, "__tostring");
+		}
 
 		if (callOperator) {
 			lua_pushcfunction(L, callOperator, nullptr);
@@ -228,6 +245,20 @@ public:
 	}
 
 	/**
+	 * @brief Bind a `__tostring` operator to Luau.
+	 *
+	 * The function should be a member or non-member function that takes only
+	 * one argument, `this`, and returns a string.
+	 *
+	 * @tparam F          The function.
+	 * @tparam capability Required capabilities to use this operator.
+	 */
+	template <auto F, SbxCapability capability = NoneSecurity>
+	static void BindToString() {
+		tostringFunc = luaSBX_bindcxx<"", F, capability, BindOperator>;
+	}
+
+	/**
 	 * @brief Bind a call operator to Luau.
 	 *
 	 * The supplied function should be a member or non-member function that
@@ -240,6 +271,20 @@ public:
 	template <auto F, SbxCapability capability = NoneSecurity>
 	static void BindCallOp() {
 		callOperator = luaSBX_bindcxx<"", F, capability, BindOperator>;
+	}
+
+	/**
+	 * @brief Set an `__index` override for this class.
+	 *
+	 * The supplied function should take two parameters, the Luau state and the
+	 * requested property, and return the number of resulting items pushed onto
+	 * the stack. If the number of items is zero, the function results will
+	 * be ignored.
+	 *
+	 * @param func The function.
+	 */
+	static void SetIndexOverride(IndexOverride func) {
+		indexOverride = func;
 	}
 
 	/**
@@ -311,7 +356,9 @@ private:
 	static std::unordered_map<std::string, Method> methods;
 	static std::unordered_map<std::string, Property> properties;
 
+	static lua_CFunction tostringFunc;
 	static lua_CFunction callOperator;
+	static IndexOverride indexOverride;
 
 	// For binary operators: Wrapper functions that call into binaryOperators
 	// (only one per operator)
@@ -335,6 +382,12 @@ private:
 
 	static int Index(lua_State *L) {
 		const char *propName = luaL_checkstring(L, 2);
+
+		if (indexOverride) {
+			if (int nret = indexOverride(L, propName)) {
+				return nret;
+			}
+		}
 
 		auto it = properties.find(propName);
 		if (it != properties.end()) {
@@ -412,7 +465,13 @@ template <typename T>
 std::unordered_map<std::string, typename LuauClassBinder<T>::Property> LuauClassBinder<T>::properties;
 
 template <typename T>
+lua_CFunction LuauClassBinder<T>::tostringFunc = nullptr;
+
+template <typename T>
 lua_CFunction LuauClassBinder<T>::callOperator = nullptr;
+
+template <typename T>
+LuauClassBinder<T>::IndexOverride LuauClassBinder<T>::indexOverride = nullptr;
 
 template <typename T>
 std::unordered_map<TMS, lua_CFunction> LuauClassBinder<T>::operatorFunctions;

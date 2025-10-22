@@ -14,6 +14,7 @@ pkgs.mkShell.override { stdenv = pkgs.clang19Stdenv; } {
     nixpkgs-fmt
     python312
     python312Packages.black
+    stylua
   ];
 
   shellHook = ''

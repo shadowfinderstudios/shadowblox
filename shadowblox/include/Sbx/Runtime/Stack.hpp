@@ -27,8 +27,10 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "lua.h"
+#include "lualib.h"
 
 namespace SBX {
 
@@ -116,6 +118,81 @@ struct LuauStackOp<std::optional<T>> {
 
 	static std::optional<T> Check(lua_State *L, int index) {
 		return Get(L, index);
+	}
+};
+
+template <typename T>
+struct LuauStackOp<std::vector<T>> {
+	static void Push(lua_State *L, const std::vector<T> &value) {
+		lua_newtable(L);
+
+		for (int i = 0; i < value.size(); i++) {
+			LuauStackOp<T>::Push(L, value[i]);
+			lua_rawseti(L, -2, i + 1);
+		}
+	}
+
+	static std::vector<T> Get(lua_State *L, int index) {
+		std::vector<T> res;
+		if (!lua_istable(L, index)) {
+			return res;
+		}
+
+		int n = lua_objlen(L, index);
+		for (int i = 1; i <= n; i++) {
+			lua_rawgeti(L, index, i);
+			if (!LuauStackOp<T>::Is(L, -1)) {
+				lua_pop(L, 1);
+				return std::vector<T>();
+			}
+
+			res.push_back(LuauStackOp<T>::Get(L, -1));
+			lua_pop(L, 1);
+		}
+
+		return res;
+	}
+
+	static bool Is(lua_State *L, int index) {
+		if (!lua_istable(L, index)) {
+			return false;
+		}
+
+		index = lua_absindex(L, index);
+
+		int n = lua_objlen(L, index);
+		for (int i = 1; i <= n; i++) {
+			lua_rawgeti(L, index, i);
+			if (!LuauStackOp<T>::Is(L, -1)) {
+				lua_pop(L, 1);
+				return false;
+			}
+
+			lua_pop(L, 1);
+		}
+
+		return true;
+	}
+
+	static std::vector<T> Check(lua_State *L, int index, const char *typeName) {
+		if (!lua_istable(L, index)) {
+			luaL_typeerrorL(L, index, typeName);
+		}
+
+		std::vector<T> res;
+
+		int n = lua_objlen(L, index);
+		for (int i = 1; i <= n; i++) {
+			lua_rawgeti(L, index, i);
+			if (!LuauStackOp<T>::Is(L, -1)) {
+				luaL_typeerrorL(L, index, typeName);
+			}
+
+			res.push_back(LuauStackOp<T>::Get(L, -1));
+			lua_pop(L, 1);
+		}
+
+		return res;
 	}
 };
 
@@ -236,7 +313,7 @@ struct LuauStackOp<const char *> {
 		reinterpret_cast<mType *>(udata)->~mType(); \
 	}
 
-/* STATIC OBJECT: Use for objects not owned by Luau with ~static  lifetime */
+/* STATIC OBJECT: Use for objects not owned by Luau with ~static lifetime */
 
 #define STACK_OP_STATIC_PTR_DEF(type)                \
 	template <>                                      \
@@ -252,6 +329,45 @@ struct LuauStackOp<const char *> {
 	void LuauStackOp<type *>::Push(lua_State *L, type *value) {                                               \
 		type **udata = reinterpret_cast<type **>(lua_newuserdatataggedwithmetatable(L, sizeof(void *), tag)); \
 		*udata = value;                                                                                       \
+	}                                                                                                         \
+                                                                                                              \
+	type *LuauStackOp<type *>::Get(lua_State *L, int index) {                                                 \
+		type **udata = reinterpret_cast<type **>(lua_touserdatatagged(L, index, tag));                        \
+		return udata ? *udata : nullptr;                                                                      \
+	}                                                                                                         \
+                                                                                                              \
+	bool LuauStackOp<type *>::Is(lua_State *L, int index) {                                                   \
+		return lua_touserdatatagged(L, index, tag);                                                           \
+	}                                                                                                         \
+                                                                                                              \
+	type *LuauStackOp<type *>::Check(lua_State *L, int index) {                                               \
+		type **udata = reinterpret_cast<type **>(lua_touserdatatagged(L, index, tag));                        \
+		if (udata)                                                                                            \
+			return *udata;                                                                                    \
+		luaL_typeerrorL(L, index, metatable_name);                                                            \
+	}
+
+/* STATIC REGREF: Use for ~static objects with strong/weak cache in Luau */
+
+#define STACK_OP_REGISTRY_PTR_DEF(type)                 \
+	template <>                                         \
+	struct LuauStackOp<type *> {                        \
+		static void PushRaw(lua_State *L, void *value); \
+		static void Push(lua_State *L, type *value);    \
+                                                        \
+		static type *Get(lua_State *L, int index);      \
+		static bool Is(lua_State *L, int index);        \
+		static type *Check(lua_State *L, int index);    \
+	};
+
+#define REGISTRY_PTR_STACK_OP_IMPL(type, metatable_name, tag, weak)                                           \
+	void LuauStackOp<type *>::PushRaw(lua_State *L, void *value) {                                            \
+		type **udata = reinterpret_cast<type **>(lua_newuserdatataggedwithmetatable(L, sizeof(void *), tag)); \
+		*udata = (type *)value;                                                                               \
+	}                                                                                                         \
+                                                                                                              \
+	void LuauStackOp<type *>::Push(lua_State *L, type *value) {                                               \
+		luaSBX_pushregistry(L, value, PushRaw, weak);                                                         \
 	}                                                                                                         \
                                                                                                               \
 	type *LuauStackOp<type *>::Get(lua_State *L, int index) {                                                 \

@@ -36,7 +36,8 @@ License: Expat
 ######################
 
 Files: extern/luau/*
-Comment: Luau language
+ shadowblox_tests/src/Conformance/Conformance.cpp
+Comment: Luau language and logic (excerpts)
 Copyright: 2019-2025, Roblox Corporation
  1994–2019, Lua.org, PUC-Rio.
 License: Expat

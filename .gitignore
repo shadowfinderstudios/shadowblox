@@ -6,6 +6,10 @@
 *.os
 .sconsign.dblite
 
+__pycache__/
+*.gen.hpp
+*.gen.cpp
+
 # clangd
 .cache/
 compile_commands.json

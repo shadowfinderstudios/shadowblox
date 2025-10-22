@@ -75,18 +75,18 @@ Roblox functions:
 
 Roblox variables:
 
-| Name        | Status | Remarks     | As of |
-|-------------|--------|-------------|-------|
-| `Enum`      | ❌     |             |       |
-| `game`      | ❌     |             |       |
-| `plugin`    | ⛔     | Studio only |       |
-| `shared`    | ❌     |             |       |
-| `script`    | ❌     |             |       |
-| `workspace` | ❌     |             |       |
+| Name        | Status | Remarks     | As of            |
+|-------------|--------|-------------|------------------|
+| `Enum`      | ✅     |             | 2025-10-21 (695) |
+| `game`      | ❌     |             |                  |
+| `plugin`    | ⛔     | Studio only |                  |
+| `shared`    | ❌     |             |                  |
+| `script`    | ❌     |             |                  |
+| `workspace` | ❌     |             |                  |
 
 | Implemented | Not planned | Not implemented | Total |
 |-------------|-------------|-----------------|-------|
-| 0           | 1           | 5               | 6     |
+| 1           | 1           | 4               | 6     |
 
 - ✅: Implemented with test coverage or verified behavior
 - 🏃‍➡️: In progress

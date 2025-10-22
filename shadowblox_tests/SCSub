@@ -15,6 +15,7 @@ env = env_base.Clone()
 
 sources = Glob("src/*.cpp")
 sources += Glob("src/Runtime/*.cpp")
+sources += Glob("src/Conformance/*.cpp")
 
 env.Append(LIBS=[shadowblox_lib, luau_lib])
 env.Append(CPPPATH="src/")

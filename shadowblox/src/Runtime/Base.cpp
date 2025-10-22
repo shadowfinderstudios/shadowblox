@@ -56,6 +56,8 @@ static SbxThreadData *luaSBX_initthreaddata(lua_State *LP, lua_State *L) {
 		udata->identity = parentUdata->identity;
 		udata->additionalCapability = parentUdata->additionalCapability;
 		udata->mutex = parentUdata->mutex;
+		udata->objRegistry = parentUdata->objRegistry;
+		udata->weakObjRegistry = parentUdata->weakObjRegistry;
 		udata->userdata = parentUdata->userdata;
 	}
 

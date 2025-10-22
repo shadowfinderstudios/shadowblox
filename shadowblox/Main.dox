@@ -21,3 +21,8 @@
  * @brief Namespace for shadowblox core components. Does not include data types
  *        or `Instance` types.
  */
+
+/**
+ * @namespace SBX::DataTypes
+ * @brief Namespace for implementations of Roblox data types.
+ */

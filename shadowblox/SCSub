@@ -1,12 +1,28 @@
 # -*- mode: python -*-
 # When building final binary: `env.Append(LIBS=[shadowblox_lib, luau_lib])`
 
+import codegen.rbx_codegen
+
 Import(["env_base", "luau_includes"])
 
 env = env_base.Clone()
 
+env.Append(
+    BUILDERS={
+        "GenerateRbxApi": Builder(
+            action=codegen.rbx_codegen.generate_bindings,
+            emitter=codegen.rbx_codegen.emit_files,
+        )
+    }
+)
+
+rbx_api = env.GenerateRbxApi()
+NoCache(rbx_api)
+AlwaysBuild(rbx_api)
+
 sources = Glob("src/*.cpp")
 sources += Glob("src/Runtime/*.cpp")
+sources += Glob("src/DataTypes/*.cpp")
 
 includes = ["#shadowblox/include/"]
 

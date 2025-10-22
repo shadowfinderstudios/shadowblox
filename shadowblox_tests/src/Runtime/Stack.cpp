@@ -27,12 +27,14 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "lua.h"
 #include "lualib.h" // NOLINT
 
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/Stack.hpp"
+#include "Utils.hpp"
 
 using namespace SBX;
 
@@ -116,6 +118,54 @@ TEST_CASE("int64") {
 		LuauStackOp<int64_t>::Push(L, j);
 		REQUIRE(lua_isuserdata(L, -1));
 		lua_pop(L, 1);
+	}
+
+	luaSBX_close(L);
+}
+
+TEST_CASE("vector") {
+	lua_State *L = luaSBX_newstate(CoreVM, AnonymousIdentity);
+
+	SUBCASE("correct cases") {
+		LuauStackOp<std::vector<int>>::Push(L, { 1, 2, 3, 4 });
+		CHECK_EQ(lua_gettop(L), 1);
+
+		CHECK(LuauStackOp<std::vector<int>>::Is(L, -1));
+		CHECK_EQ(lua_gettop(L), 1);
+
+		std::vector<int> get = LuauStackOp<std::vector<int>>::Get(L, -1);
+		CHECK_EQ(lua_gettop(L), 1);
+
+		CHECK_EQ(get.size(), 4);
+		CHECK_EQ(get[0], 1);
+		CHECK_EQ(get[1], 2);
+		CHECK_EQ(get[2], 3);
+		CHECK_EQ(get[3], 4);
+
+		std::vector<int> check = LuauStackOp<std::vector<int>>::Get(L, -1);
+		CHECK_EQ(lua_gettop(L), 1);
+
+		CHECK_EQ(check.size(), 4);
+		CHECK_EQ(check[0], 1);
+		CHECK_EQ(check[1], 2);
+		CHECK_EQ(check[2], 3);
+		CHECK_EQ(check[3], 4);
+
+		lua_pop(L, 1);
+	}
+
+	SUBCASE("empty") {
+		lua_newtable(L);
+		CHECK(LuauStackOp<std::vector<int>>::Is(L, -1));
+		CHECK_EQ(lua_gettop(L), 1);
+		lua_pop(L, 1);
+	}
+
+	SUBCASE("incorrect") {
+		EVAL_THEN(L, "return {1, 2, 3, ''}", {
+			CHECK_FALSE(LuauStackOp<std::vector<int>>::Is(L, -1));
+			CHECK(LuauStackOp<std::vector<int>>::Get(L, -1).empty());
+		});
 	}
 
 	luaSBX_close(L);
