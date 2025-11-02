@@ -84,10 +84,21 @@ header_py = """# SPDX-License-Identifier: LGPL-3.0-or-later
 ################################################################################
 
 """
-root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"]).decode("utf-8").strip()
+root = (
+    subprocess.check_output(["git", "rev-parse", "--show-toplevel"])
+    .decode("utf-8")
+    .strip()
+)
 os.chdir(root)
 
-files = [f for f in subprocess.check_output(["git", "ls-files"]).decode("utf-8").split("\n") if f.endswith(".cpp") or f.endswith(".hpp") or f.endswith(".luau") or f.endswith(".py")]
+files = [
+    f
+    for f in subprocess.check_output(["git", "ls-files"]).decode("utf-8").split("\n")
+    if f.endswith(".cpp")
+    or f.endswith(".hpp")
+    or f.endswith(".luau")
+    or f.endswith(".py")
+]
 
 
 def handle_ext(path, header, header_regex, f):
@@ -98,7 +109,7 @@ def handle_ext(path, header, header_regex, f):
         return
 
     if res:
-        contents = contents[res.end(0):]
+        contents = contents[res.end(0) :]
 
     f.seek(0)
     f.write(header + contents)
@@ -107,7 +118,7 @@ def handle_ext(path, header, header_regex, f):
 
 
 for path in files:
-    with open(path, "r+") as f:
+    with open(path, "r+", encoding="utf-8") as f:
         if path.endswith(".cpp") or path.endswith(".hpp"):
             handle_ext(path, header_cpp, header_regex_cpp, f)
         elif path.endswith(".luau"):
