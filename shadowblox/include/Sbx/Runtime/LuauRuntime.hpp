@@ -32,8 +32,6 @@
 
 namespace SBX {
 
-class ThreadHandle;
-
 class LuauRuntime {
 public:
 	LuauRuntime(void (*initCallback)(lua_State *), bool debug = false);
@@ -44,7 +42,7 @@ public:
 	LuauRuntime &operator=(const LuauRuntime &other) = delete;
 	LuauRuntime &operator=(LuauRuntime &&other) = delete;
 
-	ThreadHandle GetVM(VMType type);
+	lua_State *GetVM(VMType type);
 
 	void GCStep(const uint32_t *step, double delta);
 	void GCSize(int32_t *outBuffer);
@@ -53,22 +51,6 @@ private:
 	void (*initCallback)(lua_State *);
 	lua_State *vms[VMMax];
 	void InitVM(lua_State *L, bool debug);
-};
-
-class ThreadHandle {
-public:
-	ThreadHandle(lua_State *L);
-	~ThreadHandle();
-
-	ThreadHandle(const ThreadHandle &other) = delete;
-	ThreadHandle(ThreadHandle &&other) = delete;
-	ThreadHandle &operator=(const ThreadHandle &other) = delete;
-	ThreadHandle &operator=(ThreadHandle &&other) = delete;
-
-	operator lua_State *() const;
-
-private:
-	lua_State *L;
 };
 
 } //namespace SBX

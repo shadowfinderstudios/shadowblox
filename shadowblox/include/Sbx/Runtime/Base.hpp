@@ -25,8 +25,6 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
-#include <mutex>
 
 #include "lua.h"
 
@@ -107,7 +105,6 @@ struct SbxThreadData {
 	VMType vmType = VMMax;
 	SbxIdentity identity = AnonymousIdentity;
 	int32_t additionalCapability = 0;
-	std::shared_ptr<std::mutex> mutex;
 	uint64_t interruptDeadline = 0;
 
 	int objRegistry = LUA_NOREF;

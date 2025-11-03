@@ -41,23 +41,19 @@ TEST_CASE("initialize") {
 
 	CHECK_EQ(hit, VMMax);
 
-	auto LC = rt.GetVM(CoreVM);
+	lua_State *LC = rt.GetVM(CoreVM);
 	SbxThreadData *udataCore = luaSBX_getthreaddata(LC);
 	REQUIRE_NE(udataCore, nullptr);
 	CHECK_EQ(lua_gettop(LC), 0);
 	CHECK_EQ(udataCore->vmType, CoreVM);
 	CHECK_EQ(udataCore->identity, ElevatedGameScriptIdentity);
 
-	auto LU = rt.GetVM(UserVM);
+	lua_State *LU = rt.GetVM(UserVM);
 	SbxThreadData *udataUser = luaSBX_getthreaddata(LU);
 	REQUIRE_NE(udataUser, nullptr);
 	CHECK_EQ(lua_gettop(LU), 0);
 	CHECK_EQ(udataUser->vmType, UserVM);
 	CHECK_EQ(udataUser->identity, GameScriptIdentity);
-
-	// Ensure acquisition of mutex
-	CHECK_FALSE(udataCore->mutex->try_lock());
-	CHECK_FALSE(udataUser->mutex->try_lock());
 }
 
 TEST_SUITE_END();

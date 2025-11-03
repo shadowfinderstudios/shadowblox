@@ -25,7 +25,6 @@
 #include "Sbx/Runtime/LuauRuntime.hpp"
 
 #include <cstdint>
-#include <mutex>
 
 #include "Luau/CodeGen.h"
 #include "lua.h"
@@ -34,19 +33,6 @@
 #include "Sbx/Runtime/Base.hpp"
 
 namespace SBX {
-
-ThreadHandle::ThreadHandle(lua_State *L) :
-		L(L) {
-	if (std::mutex *mut = luaSBX_getthreaddata(L)->mutex.get())
-		mut->lock();
-}
-
-ThreadHandle::~ThreadHandle() {
-	if (std::mutex *mut = luaSBX_getthreaddata(L)->mutex.get())
-		mut->unlock();
-}
-
-ThreadHandle::operator lua_State *() const { return L; }
 
 LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *), bool debug) :
 		initCallback(initCallback) {
@@ -78,20 +64,20 @@ void LuauRuntime::InitVM(lua_State *L, bool debug) {
 		Luau::CodeGen::create(L);
 }
 
-ThreadHandle LuauRuntime::GetVM(VMType type) {
+lua_State *LuauRuntime::GetVM(VMType type) {
 	return vms[type];
 }
 
 void LuauRuntime::GCStep(const uint32_t *step, double delta) {
 	for (int i = 0; i < VMMax; i++) {
-		auto L = GetVM(VMType(i));
+		lua_State *L = GetVM(VMType(i));
 		lua_gc(L, LUA_GCSTEP, step[i] * delta);
 	}
 }
 
 void LuauRuntime::GCSize(int32_t *outBuffer) {
 	for (int i = 0; i < VMMax; i++) {
-		auto L = GetVM(VMType(i));
+		lua_State *L = GetVM(VMType(i));
 		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
 	}
 }

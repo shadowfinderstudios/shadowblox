@@ -86,7 +86,7 @@ static ExecOutput runConformance(LuauRuntime &runtime, const char *name) {
 	std::stringstream buffer;
 	buffer << stream.rdbuf();
 
-	ThreadHandle L = runtime.GetVM(CoreVM);
+	lua_State *L = runtime.GetVM(CoreVM);
 	lua_State *T = lua_newthread(L);
 	luaL_sandboxthread(T);
 

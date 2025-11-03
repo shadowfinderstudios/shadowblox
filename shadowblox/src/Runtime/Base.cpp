@@ -26,8 +26,6 @@
 
 #include <cstdint>
 #include <cstdlib>
-#include <memory>
-#include <mutex>
 
 #include "lua.h"
 #include "lualib.h"
@@ -55,7 +53,6 @@ static SbxThreadData *luaSBX_initthreaddata(lua_State *LP, lua_State *L) {
 		udata->vmType = parentUdata->vmType;
 		udata->identity = parentUdata->identity;
 		udata->additionalCapability = parentUdata->additionalCapability;
-		udata->mutex = parentUdata->mutex;
 		udata->objRegistry = parentUdata->objRegistry;
 		udata->weakObjRegistry = parentUdata->weakObjRegistry;
 		udata->userdata = parentUdata->userdata;
@@ -86,7 +83,6 @@ lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	SbxThreadData *udata = luaSBX_initthreaddata(nullptr, L);
 	udata->vmType = vmType;
 	udata->identity = defaultIdentity;
-	udata->mutex = std::make_shared<std::mutex>();
 
 	lua_Callbacks *callbacks = lua_callbacks(L);
 	callbacks->userthread = luaSBX_userthread;
