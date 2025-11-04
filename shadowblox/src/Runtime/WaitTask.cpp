@@ -22,60 +22,58 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Sbx/Runtime/LuauRuntime.hpp"
-
-#include <cstdint>
+#include "Sbx/Runtime/WaitTask.hpp"
 
 #include "lua.h"
 #include "lualib.h"
 
 #include "Sbx/Runtime/Base.hpp"
+#include "Sbx/Runtime/TaskScheduler.hpp"
+
+struct lua_State;
 
 namespace SBX {
 
-LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *), bool debug) :
-		initCallback(initCallback) {
-	vms[CoreVM] = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
-	InitVM(vms[CoreVM], debug);
-
-	vms[UserVM] = luaSBX_newstate(UserVM, GameScriptIdentity);
-	InitVM(vms[UserVM], debug);
+WaitTask::WaitTask(lua_State *T, double duration, bool canThrottle) :
+		ScheduledTask(T), remaining(duration), canThrottle(canThrottle) {
+	start = lua_clock();
 }
 
-LuauRuntime::~LuauRuntime() {
-	for (lua_State *&L : vms) {
-		luaSBX_close(L);
-		L = nullptr;
+int WaitTask::IsComplete(ResumptionPoint) {
+	return remaining == 0.0;
+}
+
+int WaitTask::PushResults() {
+	lua_pushnumber(T, lua_clock() - start);
+
+	if (canThrottle) {
+		// TODO: Correctness
+		lua_pushnumber(T, lua_clock());
+		return 2;
+	}
+
+	return 1;
+}
+
+void WaitTask::Update(double delta) {
+	if (delta > remaining) {
+		remaining = 0.0;
+	} else {
+		remaining -= delta;
 	}
 }
 
-void LuauRuntime::InitVM(lua_State *L, bool debug) {
-	if (debug)
-		luaSBX_debugcallbacks(L);
+int luaSBX_wait(lua_State *L) {
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	double duration = luaL_checknumber(L, 1);
 
-	if (initCallback)
-		initCallback(L);
+	if (!udata->global->scheduler)
+		luaSBX_noschederror(L);
 
-	// Seal main global state
-	luaL_sandbox(L);
-}
+	WaitTask *task = new WaitTask(L, duration, true);
+	udata->global->scheduler->AddTask(task);
 
-lua_State *LuauRuntime::GetVM(VMType type) {
-	return vms[type];
-}
-
-void LuauRuntime::GCStep(const uint32_t *step, double delta) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		lua_gc(L, LUA_GCSTEP, step[i] * delta);
-	}
-}
-
-void LuauRuntime::GCSize(int32_t *outBuffer) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
-	}
+	return lua_yield(L, 0);
 }
 
 } //namespace SBX

@@ -22,60 +22,29 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Sbx/Runtime/LuauRuntime.hpp"
-
-#include <cstdint>
+#pragma once
 
 #include "lua.h"
-#include "lualib.h"
 
-#include "Sbx/Runtime/Base.hpp"
+#include "Sbx/Runtime/TaskScheduler.hpp"
 
 namespace SBX {
 
-LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *), bool debug) :
-		initCallback(initCallback) {
-	vms[CoreVM] = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
-	InitVM(vms[CoreVM], debug);
+class WaitTask : public ScheduledTask {
+public:
+	WaitTask(lua_State *T, double duration, bool canThrottle);
 
-	vms[UserVM] = luaSBX_newstate(UserVM, GameScriptIdentity);
-	InitVM(vms[UserVM], debug);
-}
+	bool CanThrottle() override { return canThrottle; }
+	int IsComplete(ResumptionPoint) override;
+	int PushResults() override;
+	void Update(double delta) override;
 
-LuauRuntime::~LuauRuntime() {
-	for (lua_State *&L : vms) {
-		luaSBX_close(L);
-		L = nullptr;
-	}
-}
+private:
+	double start;
+	double remaining;
+	bool canThrottle;
+};
 
-void LuauRuntime::InitVM(lua_State *L, bool debug) {
-	if (debug)
-		luaSBX_debugcallbacks(L);
-
-	if (initCallback)
-		initCallback(L);
-
-	// Seal main global state
-	luaL_sandbox(L);
-}
-
-lua_State *LuauRuntime::GetVM(VMType type) {
-	return vms[type];
-}
-
-void LuauRuntime::GCStep(const uint32_t *step, double delta) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		lua_gc(L, LUA_GCSTEP, step[i] * delta);
-	}
-}
-
-void LuauRuntime::GCSize(int32_t *outBuffer) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
-	}
-}
+int luaSBX_wait(lua_State *L);
 
 } //namespace SBX

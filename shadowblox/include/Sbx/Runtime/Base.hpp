@@ -42,7 +42,11 @@
 #define luaSBX_missingargerror(L, num) luaL_error(L, "Argument %d missing or nil", num)
 #define luaSBX_casterror(L, from, to) luaL_error(L, "Unable to cast %s to %s", from, to)
 
+#define luaSBX_noschederror(L) luaL_error(L, "missing task scheduler")
+
 namespace SBX {
+
+class TaskScheduler;
 
 enum UdataTag : uint8_t {
 	Int64Udata = 0,
@@ -101,6 +105,10 @@ enum VMType : uint8_t {
 	VMMax
 };
 
+struct SbxGlobalThreadData {
+	TaskScheduler *scheduler = nullptr;
+};
+
 struct SbxThreadData {
 	VMType vmType = VMMax;
 	SbxIdentity identity = AnonymousIdentity;
@@ -110,6 +118,7 @@ struct SbxThreadData {
 	int objRegistry = LUA_NOREF;
 	int weakObjRegistry = LUA_NOREF;
 
+	SbxGlobalThreadData *global = nullptr;
 	void *userdata = nullptr;
 };
 

@@ -36,17 +36,17 @@ struct ExecOutput {
 
 ExecOutput luaGD_exec(lua_State *L, const char *src);
 
-#define EVAL_THEN(L, src, expr)              \
-	{                                        \
-		int top = lua_gettop(L);             \
-		ExecOutput out = luaGD_exec(L, src); \
-                                             \
-		if (out.status != LUA_OK)            \
-			FAIL_CHECK(out.error);           \
-                                             \
-		expr;                                \
-                                             \
-		lua_settop(L, top);                  \
+#define EVAL_THEN(L, src, expr)                              \
+	{                                                        \
+		int top = lua_gettop(L);                             \
+		ExecOutput out = luaGD_exec(L, src);                 \
+                                                             \
+		if (out.status != LUA_OK && out.status != LUA_YIELD) \
+			FAIL_CHECK(out.error);                           \
+                                                             \
+		expr;                                                \
+                                                             \
+		lua_settop(L, top);                                  \
 	}
 
 #define CHECK_EVAL_EQ(L, src, type, value)                      \

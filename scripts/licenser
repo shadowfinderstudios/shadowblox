@@ -93,7 +93,11 @@ os.chdir(root)
 
 files = [
     f
-    for f in subprocess.check_output(["git", "ls-files"]).decode("utf-8").split("\n")
+    for f in subprocess.check_output(
+        ["git", "ls-files", "--cached", "--others", "--exclude-standard"]
+    )
+    .decode("utf-8")
+    .split("\n")
     if f.endswith(".cpp")
     or f.endswith(".hpp")
     or f.endswith(".luau")

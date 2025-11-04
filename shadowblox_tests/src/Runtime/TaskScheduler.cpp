@@ -22,60 +22,44 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Sbx/Runtime/LuauRuntime.hpp"
-
-#include <cstdint>
+#include "doctest.h"
 
 #include "lua.h"
-#include "lualib.h"
 
 #include "Sbx/Runtime/Base.hpp"
+#include "Sbx/Runtime/TaskScheduler.hpp"
+#include "Utils.hpp"
 
-namespace SBX {
+using namespace SBX;
 
-LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *), bool debug) :
-		initCallback(initCallback) {
-	vms[CoreVM] = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
-	InitVM(vms[CoreVM], debug);
+TEST_SUITE_BEGIN("Runtime/TaskScheduler");
 
-	vms[UserVM] = luaSBX_newstate(UserVM, GameScriptIdentity);
-	InitVM(vms[UserVM], debug);
-}
+TEST_CASE("resume") {
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	TaskScheduler scheduler(nullptr);
 
-LuauRuntime::~LuauRuntime() {
-	for (lua_State *&L : vms) {
-		luaSBX_close(L);
-		L = nullptr;
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	udata->global->scheduler = &scheduler;
+
+	SUBCASE("legacy wait") {
+		CHECK_EVAL_OK(L, R"ASDF(
+			local t, u = wait(1)
+			assert(t > 0)
+			assert(u > 0)
+		)ASDF")
+
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		// Throttle
+		scheduler.Resume(ResumptionPoint::Heartbeat, 0.5, -1.0);
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		// Pass
+		scheduler.Resume(ResumptionPoint::Heartbeat, 0.6, 1.0);
+		REQUIRE_EQ(lua_status(L), LUA_OK);
 	}
+
+	luaSBX_close(L);
 }
 
-void LuauRuntime::InitVM(lua_State *L, bool debug) {
-	if (debug)
-		luaSBX_debugcallbacks(L);
-
-	if (initCallback)
-		initCallback(L);
-
-	// Seal main global state
-	luaL_sandbox(L);
-}
-
-lua_State *LuauRuntime::GetVM(VMType type) {
-	return vms[type];
-}
-
-void LuauRuntime::GCStep(const uint32_t *step, double delta) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		lua_gc(L, LUA_GCSTEP, step[i] * delta);
-	}
-}
-
-void LuauRuntime::GCSize(int32_t *outBuffer) {
-	for (int i = 0; i < VMMax; i++) {
-		lua_State *L = GetVM(VMType(i));
-		outBuffer[i] = lua_gc(L, LUA_GCCOUNT, 0);
-	}
-}
-
-} //namespace SBX
+TEST_SUITE_END();

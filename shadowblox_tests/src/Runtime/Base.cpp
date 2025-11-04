@@ -41,6 +41,7 @@ TEST_CASE("newstate") {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 	CHECK_EQ(udata->vmType, CoreVM);
 	CHECK_EQ(udata->identity, ElevatedGameScriptIdentity);
+	CHECK_NE(udata->global, nullptr);
 
 	luaSBX_close(L);
 }
@@ -61,6 +62,7 @@ TEST_CASE("newthread") {
 
 		CHECK_EQ(threadUdata->vmType, udata->vmType);
 		CHECK_EQ(threadUdata->identity, udata->identity);
+		CHECK_EQ(threadUdata->global, udata->global);
 
 		lua_pop(L, 1);
 	}
@@ -74,6 +76,7 @@ TEST_CASE("newthread") {
 
 		CHECK_EQ(threadUdata->vmType, udata->vmType);
 		CHECK_EQ(threadUdata->identity, AnonymousIdentity);
+		CHECK_EQ(threadUdata->global, udata->global);
 
 		lua_pop(L, 1);
 	}

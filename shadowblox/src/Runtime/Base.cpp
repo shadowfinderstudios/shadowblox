@@ -27,10 +27,12 @@
 #include <cstdint>
 #include <cstdlib>
 
+#include "Luau/CodeGen.h"
 #include "lua.h"
 #include "lualib.h"
 
 #include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/TaskScheduler.hpp"
 
 namespace SBX {
 
@@ -55,6 +57,7 @@ static SbxThreadData *luaSBX_initthreaddata(lua_State *LP, lua_State *L) {
 		udata->additionalCapability = parentUdata->additionalCapability;
 		udata->objRegistry = parentUdata->objRegistry;
 		udata->weakObjRegistry = parentUdata->weakObjRegistry;
+		udata->global = parentUdata->global;
 		udata->userdata = parentUdata->userdata;
 	}
 
@@ -76,13 +79,18 @@ static void luaSBX_userthread(lua_State *LP, lua_State *L) {
 lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	lua_State *L = lua_newstate(luaSBX_alloc, nullptr);
 
+	if (Luau::CodeGen::isSupported())
+		Luau::CodeGen::create(L);
+
 	// Base libraries
 	luaL_openlibs(L);
 	LuauStackOp<int64_t>::InitMetatable(L);
+	luaSBX_opensched(L);
 
 	SbxThreadData *udata = luaSBX_initthreaddata(nullptr, L);
 	udata->vmType = vmType;
 	udata->identity = defaultIdentity;
+	udata->global = new SbxGlobalThreadData;
 
 	lua_Callbacks *callbacks = lua_callbacks(L);
 	callbacks->userthread = luaSBX_userthread;
@@ -124,6 +132,8 @@ void luaSBX_close(lua_State *L) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 	if (udata) {
 		lua_setthreaddata(L, nullptr);
+		if (udata->global)
+			delete udata->global;
 		delete udata;
 	}
 
@@ -229,6 +239,7 @@ int luaSBX_resume(lua_State *L, lua_State *from, int nargs, double timeout) {
 	int status = lua_resume(L, from, nargs);
 
 	// TODO: Debug break if applicable
+	// TODO: Error logging
 
 	return status;
 }
@@ -241,6 +252,7 @@ int luaSBX_pcall(lua_State *L, int nargs, int nresults, int errfunc, double time
 	int status = lua_pcall(L, nargs, nresults, errfunc);
 
 	// TODO: Debug break if applicable
+	// TODO: Error logging
 
 	return status;
 }
