@@ -106,6 +106,7 @@ enum VMType : uint8_t {
 };
 
 struct SbxGlobalThreadData {
+	double initTimestamp = 0.0;
 	TaskScheduler *scheduler = nullptr;
 };
 

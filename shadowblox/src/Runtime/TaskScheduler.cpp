@@ -120,15 +120,22 @@ void TaskScheduler::AddTask(ScheduledTask *task) {
 	tasks.push_back(task);
 }
 
-static const luaL_Reg SCHEDULER_LIB[] = {
+static const luaL_Reg LEGACY_SCHEDULER_LIB[] = {
 	{ "wait", luaSBX_wait },
 
 	{ nullptr, nullptr }
 };
 
+static const luaL_Reg SCHEDULER_LIB[] = {
+	{ "wait", luaSBX_taskwait },
+
+	{ nullptr, nullptr }
+};
+
 void luaSBX_opensched(lua_State *L) {
-	luaL_register(L, "_G", SCHEDULER_LIB);
-	lua_pop(L, 1); // table
+	luaL_register(L, "_G", LEGACY_SCHEDULER_LIB);
+	luaL_register(L, "task", SCHEDULER_LIB);
+	lua_pop(L, 2); // tables
 }
 
 } //namespace SBX

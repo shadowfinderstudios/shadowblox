@@ -1,7 +1,7 @@
 # Implementation Status: Data Types
 
 | Name                      | Status | Remarks     | As of            |
-|---------------------------|--------|-------------|------------------|
+| ------------------------- | ------ | ----------- | ---------------- |
 | `Axes`                    | ❌     |             |                  |
 | `BrickColor`              | ❌     |             |                  |
 | `CatalogSearchParams`     | ❌     |             |                  |
@@ -48,7 +48,7 @@
 | `Vector3int16`            | ❌     |             |                  |
 
 | Implemented | Not planned | Not implemented | Total |
-|-------------|-------------|-----------------|-------|
+| ----------- | ----------- | --------------- | ----- |
 | 3           | 1           | 40              | 44    |
 
 - ✅: Implemented with test coverage

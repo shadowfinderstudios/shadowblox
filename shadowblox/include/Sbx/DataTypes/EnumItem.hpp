@@ -37,8 +37,6 @@ class Enum;
 /**
  * @brief This class implements Roblox's [`EnumItem`](https://create.roblox.com/docs/en-us/reference/engine/datatypes/EnumItem)
  * data type.
- *
- * - **Status:** Done as of 2025-10-21 (695)
  */
 class EnumItem {
 public:

@@ -36,10 +36,15 @@ namespace SBX {
 LuauRuntime::LuauRuntime(void (*initCallback)(lua_State *), bool debug) :
 		initCallback(initCallback) {
 	vms[CoreVM] = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
-	InitVM(vms[CoreVM], debug);
-
 	vms[UserVM] = luaSBX_newstate(UserVM, GameScriptIdentity);
-	InitVM(vms[UserVM], debug);
+
+	double init = lua_clock();
+	for (int i = 0; i < VMMax; i++) {
+		SbxThreadData *udata = luaSBX_getthreaddata(vms[i]);
+		udata->global->initTimestamp = init;
+
+		InitVM(vms[i], debug);
+	}
 }
 
 LuauRuntime::~LuauRuntime() {

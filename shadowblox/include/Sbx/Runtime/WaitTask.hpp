@@ -42,12 +42,13 @@ public:
 	void Update(uint64_t frame, double delta) override;
 
 private:
-	double start;
-	double remaining;
+	double elapsed;
+	double duration;
 	uint64_t lastFrame;
 	bool legacyThrottling;
 };
 
 int luaSBX_wait(lua_State *L);
+int luaSBX_taskwait(lua_State *L);
 
 } //namespace SBX

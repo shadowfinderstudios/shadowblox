@@ -92,6 +92,9 @@ lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	udata->identity = defaultIdentity;
 	udata->global = new SbxGlobalThreadData;
 
+	// Overridden in LuauRuntime to be synced with other VMs
+	udata->global->initTimestamp = lua_clock();
+
 	lua_Callbacks *callbacks = lua_callbacks(L);
 	callbacks->userthread = luaSBX_userthread;
 

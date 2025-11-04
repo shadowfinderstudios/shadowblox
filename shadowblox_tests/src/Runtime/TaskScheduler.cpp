@@ -44,7 +44,7 @@ TEST_CASE("resume") {
 	SUBCASE("legacy wait") {
 		CHECK_EVAL_OK(L, R"ASDF(
 			local t, u = wait(1)
-			assert(t > 0)
+			assert(t > 1)
 			assert(u > 0)
 		)ASDF")
 
@@ -56,6 +56,48 @@ TEST_CASE("resume") {
 
 		// Pass
 		scheduler.Resume(ResumptionPoint::Heartbeat, 2, 0.6, 1.0);
+		REQUIRE_EQ(lua_status(L), LUA_OK);
+	}
+
+	luaSBX_close(L);
+}
+
+TEST_CASE("wait") {
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	TaskScheduler scheduler(nullptr);
+
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	udata->global->scheduler = &scheduler;
+
+	SUBCASE("legacy") {
+		CHECK_EVAL_OK(L, R"ASDF(
+    		local t, u = wait(1)
+    		assert(t > 1)
+    		assert(u > 0)
+    	)ASDF")
+
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		// Odd frame
+		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 2.0, 1.0);
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		// Even frame
+		scheduler.Resume(ResumptionPoint::Heartbeat, 2, 2.0, 1.0);
+		REQUIRE_EQ(lua_status(L), LUA_OK);
+	}
+
+	SUBCASE("task") {
+		CHECK_EVAL_OK(L, R"ASDF(
+    		local t, u = task.wait(1)
+    		assert(t > 1)
+    		assert(u == nil)
+    	)ASDF")
+
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		// Immediate resumption
+		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 2.0, 1.0);
 		REQUIRE_EQ(lua_status(L), LUA_OK);
 	}
 
