@@ -1,22 +1,6 @@
 // -*- mode: cpp -*-
 
 /**
- * @mainpage
- * Welcome to the shadowblox developer documentation.
- *
- * Currently, only especially important details are documented. More details may
- * be added in the future.
- *
- * - Repository: [Forgejo](https://git.seki.pw/Fumohouse/shadowblox)
- *
- * <h2>License</h2>
- *
- * shadowblox, including code snippets in this documentation, is licensed under
- * the GNU Lesser General Public License version 3.0 or later
- * (LGPL-3.0-or-later).
- */
-
-/**
  * @namespace SBX
  * @brief Namespace for shadowblox core components. Does not include data types
  *        or `Instance` types.

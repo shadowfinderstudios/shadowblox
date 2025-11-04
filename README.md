@@ -7,6 +7,12 @@ as [Godot](https://godotengine.org/) or another game engine. Like
 
 This project is not affiliated with Roblox Corporation.
 
+## Documentation
+
+Developer documentation is generated using
+[Doxygen](https://www.doxygen.nl/index.html). Currently, only especially
+important details documented. More details may be added in the future.
+
 ## License
 
 See `COPYRIGHT.txt`.
