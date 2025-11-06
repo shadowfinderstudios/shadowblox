@@ -34,12 +34,12 @@ struct ExecOutput {
 	std::string error;
 };
 
-ExecOutput luaGD_exec(lua_State *L, const char *src);
+ExecOutput luaSBX_exec(lua_State *L, const char *src);
 
 #define EVAL_THEN(L, src, expr)                              \
 	{                                                        \
 		int top = lua_gettop(L);                             \
-		ExecOutput out = luaGD_exec(L, src);                 \
+		ExecOutput out = luaSBX_exec(L, src);                \
                                                              \
 		if (out.status != LUA_OK && out.status != LUA_YIELD) \
 			FAIL_CHECK(out.error);                           \
@@ -56,11 +56,11 @@ ExecOutput luaGD_exec(lua_State *L, const char *src);
 
 #define CHECK_EVAL_OK(L, src) EVAL_THEN(L, src, {})
 
-#define CHECK_EVAL_FAIL(L, src, err)         \
-	{                                        \
-		ExecOutput out = luaGD_exec(L, src); \
-                                             \
-		REQUIRE_NE(out.status, LUA_OK);      \
-		INFO(out.error);                     \
-		CHECK_EQ(out.error, err);            \
+#define CHECK_EVAL_FAIL(L, src, err)          \
+	{                                         \
+		ExecOutput out = luaSBX_exec(L, src); \
+                                              \
+		REQUIRE_NE(out.status, LUA_OK);       \
+		INFO(out.error);                      \
+		CHECK_EQ(out.error, err);             \
 	}

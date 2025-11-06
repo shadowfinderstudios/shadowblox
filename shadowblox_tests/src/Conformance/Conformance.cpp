@@ -98,7 +98,7 @@ static ExecOutput runConformance(LuauRuntime &runtime, const char *name) {
 		lib++;
 	}
 
-	return luaGD_exec(T, buffer.str().c_str());
+	return luaSBX_exec(T, buffer.str().c_str());
 }
 
 #define CONFORMANCE_TEST(name, file, init)              \

@@ -4,38 +4,38 @@
 
 Luau functions:
 
-| Name             | Status | Remarks | As of |
-| ---------------- | ------ | ------- | ----- |
-| `assert`         | 🇱      |         |       |
-| `collectgarbage` | ❌     |         |       |
-| `error`          | 🇱      |         |       |
-| `gcinfo`         | 🇱      |         |       |
-| `getfenv`        | 🇱      |         |       |
-| `getmetatable`   | 🇱      |         |       |
-| `ipairs`         | 🇱      |         |       |
-| `loadstring`     | ❌     |         |       |
-| `newproxy`       | 🇱      |         |       |
-| `next`           | 🇱      |         |       |
-| `pairs`          | 🇱      |         |       |
-| `pcall`          | 🇱      |         |       |
-| `print`          | 🇱      |         |       |
-| `rawequal`       | 🇱      |         |       |
-| `rawget`         | 🇱      |         |       |
-| `rawlen`         | 🇱      |         |       |
-| `rawset`         | 🇱      |         |       |
-| `require`        | ❌     |         |       |
-| `select`         | 🇱      |         |       |
-| `setfenv`        | 🇱      |         |       |
-| `setmetatable`   | 🇱      |         |       |
-| `tonumber`       | 🇱      |         |       |
-| `tostring`       | 🇱      |         |       |
-| `type`           | 🇱      |         |       |
-| `unpack`         | 🇱      |         |       |
-| `xpcall`         | 🇱      |         |       |
+| Name             | Status | Remarks | As of            |
+| ---------------- | ------ | ------- | ---------------- |
+| `assert`         | 🇱      |         |                  |
+| `collectgarbage` | ❌     |         |                  |
+| `error`          | 🇱      |         |                  |
+| `gcinfo`         | 🇱      |         |                  |
+| `getfenv`        | 🇱      |         |                  |
+| `getmetatable`   | 🇱      |         |                  |
+| `ipairs`         | 🇱      |         |                  |
+| `loadstring`     | ❌     |         |                  |
+| `newproxy`       | 🇱      |         |                  |
+| `next`           | 🇱      |         |                  |
+| `pairs`          | 🇱      |         |                  |
+| `pcall`          | 🇱      |         |                  |
+| `print`          | ✅     |         | 2025-11-06 (698) |
+| `rawequal`       | 🇱      |         |                  |
+| `rawget`         | 🇱      |         |                  |
+| `rawlen`         | 🇱      |         |                  |
+| `rawset`         | 🇱      |         |                  |
+| `require`        | ❌     |         |                  |
+| `select`         | 🇱      |         |                  |
+| `setfenv`        | 🇱      |         |                  |
+| `setmetatable`   | 🇱      |         |                  |
+| `tonumber`       | 🇱      |         |                  |
+| `tostring`       | 🇱      |         |                  |
+| `type`           | 🇱      |         |                  |
+| `unpack`         | 🇱      |         |                  |
+| `xpcall`         | 🇱      |         |                  |
 
 | Implemented | Not planned | Not implemented | Total |
 | ----------- | ----------- | --------------- | ----- |
-| 0           | 0           | 26              | 26    |
+| 1           | 0           | 25              | 26    |
 
 Luau variables:
 
@@ -66,12 +66,12 @@ Roblox functions:
 | `UserSettings`    | ❌     |             |                  |
 | `version`         | ❌     |             |                  |
 | `wait`            | ✅     |             | 2025-11-03 (697) |
-| `warn`            | ❌     |             |                  |
+| `warn`            | ✅     |             | 2025-11-06 (698) |
 | `ypcall`          | ❌     |             |                  |
 
 | Implemented | Not planned | Not implemented | Total |
 | ----------- | ----------- | --------------- | ----- |
-| 1           | 2           | 13              | 16    |
+| 2           | 2           | 12              | 16    |
 
 Roblox variables:
 

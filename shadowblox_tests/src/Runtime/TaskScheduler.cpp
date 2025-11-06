@@ -74,7 +74,7 @@ TEST_CASE("wait") {
     		local t, u = wait(1)
     		assert(t > 1)
     		assert(u > 0)
-    	)ASDF")
+		)ASDF")
 
 		REQUIRE_EQ(lua_status(L), LUA_YIELD);
 
@@ -98,6 +98,21 @@ TEST_CASE("wait") {
 
 		// Immediate resumption
 		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 2.0, 1.0);
+		REQUIRE_EQ(lua_status(L), LUA_OK);
+	}
+
+	SUBCASE("pcall") {
+		CHECK_EVAL_OK(L, R"ASDF(
+		    pcall(function()
+				local t, u = task.wait(1)
+				error("Oh no!")
+			end)
+		)ASDF")
+
+		REQUIRE_EQ(lua_status(L), LUA_YIELD);
+
+		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 2.0, 1.0);
+		// OK despite error
 		REQUIRE_EQ(lua_status(L), LUA_OK);
 	}
 

@@ -22,44 +22,52 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Utils.hpp"
+#include "doctest.h"
 
-#include <string>
-
-#include "Luau/Compiler.h"
 #include "lua.h"
 
 #include "Sbx/Runtime/Base.hpp"
-#include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/Logger.hpp"
+#include "Utils.hpp"
 
 using namespace SBX;
 
-ExecOutput luaSBX_exec(lua_State *L, const char *src) {
-	Luau::CompileOptions opts;
-	std::string bytecode = Luau::compile(src, opts);
+TEST_SUITE_BEGIN("Runtime/Logger");
 
-	ExecOutput output;
+TEST_CASE("C++ functionality") {
+	Logger logger;
+	static int hit = 0;
+	logger.AddHook([](LogKind, const char *) {
+		hit++;
+	});
 
-	if (luau_load(L, "=exec", bytecode.data(), bytecode.size(), 0) == 0) {
-		int status = luaSBX_resume(L, nullptr, 0, 1.0);
-		output.status = status;
+	logger.Print("This is a test print: %d", 1234);
+	logger.Warn("This is a test warn: %d", 1234);
+	logger.Error("This is a test error: %d", 1234);
 
-		if (status == LUA_OK) {
-			return output;
-		} else if (status == LUA_YIELD) {
-			INFO("thread yielded");
-			return output;
-		}
-
-		std::string error = LuauStackOp<std::string>::Get(L, -1);
-		lua_pop(L, 1);
-
-		output.error = error;
-		return output;
-	}
-
-	output.error = LuauStackOp<std::string>::Get(L, -1);
-	lua_pop(L, 1);
-
-	return output;
+	CHECK_EQ(hit, 3);
 }
+
+TEST_CASE("Luau functionality") {
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	Logger logger;
+	static int hit = 0;
+	logger.AddHook([](LogKind, const char *) {
+		hit++;
+	});
+
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	udata->global->logger = &logger;
+
+	CHECK_EVAL_FAIL(L, R"ASDF(
+	    print("a", "b", "c", 123)
+		warn("a", "b", "c", 123)
+		error("Oops!")
+	)ASDF",
+			"exec:4: Oops!")
+
+	CHECK_EQ(hit, 3);
+	luaSBX_close(L);
+}
+
+TEST_SUITE_END();

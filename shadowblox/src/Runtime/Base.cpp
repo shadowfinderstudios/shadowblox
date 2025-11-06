@@ -31,6 +31,7 @@
 #include "lua.h"
 #include "lualib.h"
 
+#include "Sbx/Runtime/Logger.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 #include "Sbx/Runtime/TaskScheduler.hpp"
 
@@ -85,6 +86,7 @@ lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	// Base libraries
 	luaL_openlibs(L);
 	LuauStackOp<int64_t>::InitMetatable(L);
+	luaSBX_openlogger(L);
 	luaSBX_opensched(L);
 
 	SbxThreadData *udata = luaSBX_initthreaddata(nullptr, L);
@@ -242,7 +244,12 @@ int luaSBX_resume(lua_State *L, lua_State *from, int nargs, double timeout) {
 	int status = lua_resume(L, from, nargs);
 
 	// TODO: Debug break if applicable
-	// TODO: Error logging
+	if (status != LUA_OK && status != LUA_YIELD) {
+		SbxThreadData *udata = luaSBX_getthreaddata(L);
+		if (udata->global->logger) {
+			udata->global->logger->Error(lua_tostring(L, -1));
+		}
+	}
 
 	return status;
 }
@@ -255,7 +262,12 @@ int luaSBX_pcall(lua_State *L, int nargs, int nresults, int errfunc, double time
 	int status = lua_pcall(L, nargs, nresults, errfunc);
 
 	// TODO: Debug break if applicable
-	// TODO: Error logging
+	if (status != LUA_OK && status != LUA_YIELD) {
+		SbxThreadData *udata = luaSBX_getthreaddata(L);
+		if (udata->global->logger) {
+			udata->global->logger->Error(lua_tostring(L, -1));
+		}
+	}
 
 	return status;
 }

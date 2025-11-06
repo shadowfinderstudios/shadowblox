@@ -43,9 +43,11 @@
 #define luaSBX_casterror(L, from, to) luaL_error(L, "Unable to cast %s to %s", from, to)
 
 #define luaSBX_noschederror(L) luaL_error(L, "missing task scheduler")
+#define luaSBX_nologerror(L) luaL_error(L, "missing logger")
 
 namespace SBX {
 
+class Logger;
 class TaskScheduler;
 
 enum UdataTag : uint8_t {
@@ -107,6 +109,7 @@ enum VMType : uint8_t {
 
 struct SbxGlobalThreadData {
 	double initTimestamp = 0.0;
+	Logger *logger = nullptr;
 	TaskScheduler *scheduler = nullptr;
 };
 
