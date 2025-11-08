@@ -83,6 +83,9 @@ public:
 	TaskScheduler(LuauRuntime *runtime);
 
 	void AddTask(ScheduledTask *task);
+	void CancelThread(lua_State *L);
+
+	int NumPendingTasks() const;
 
 	void Resume(ResumptionPoint point, uint64_t frame, double delta, double throttleThreshold);
 	void GCStep(double delta);

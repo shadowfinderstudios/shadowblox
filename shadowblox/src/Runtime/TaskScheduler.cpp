@@ -120,6 +120,22 @@ void TaskScheduler::AddTask(ScheduledTask *task) {
 	tasks.push_back(task);
 }
 
+void TaskScheduler::CancelThread(lua_State *L) {
+	// May be relevant in case of a destroyed Actor
+	tasks.remove_if([=](ScheduledTask *task) {
+		if (task->T == L) {
+			delete task;
+			return true;
+		}
+
+		return false;
+	});
+}
+
+int TaskScheduler::NumPendingTasks() const {
+	return tasks.size();
+}
+
 static const luaL_Reg LEGACY_SCHEDULER_LIB[] = {
 	{ "wait", luaSBX_wait },
 

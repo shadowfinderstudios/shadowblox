@@ -70,10 +70,13 @@ static void luaSBX_userthread(lua_State *LP, lua_State *L) {
 		luaSBX_initthreaddata(LP, L);
 	} else {
 		SbxThreadData *udata = luaSBX_getthreaddata(L);
-		if (udata) {
-			lua_setthreaddata(L, nullptr);
-			delete udata;
+
+		if (udata->global->scheduler) {
+			udata->global->scheduler->CancelThread(L);
 		}
+
+		lua_setthreaddata(L, nullptr);
+		delete udata;
 	}
 }
 
@@ -135,14 +138,15 @@ void luaSBX_close(lua_State *L) {
 	L = lua_mainthread(L);
 
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	if (udata) {
-		lua_setthreaddata(L, nullptr);
-		if (udata->global)
-			delete udata->global;
-		delete udata;
+
+	if (udata->global->scheduler) {
+		udata->global->scheduler->CancelThread(L);
 	}
 
 	lua_close(L);
+
+	delete udata->global;
+	delete udata;
 }
 
 int32_t identityToCapabilities(SbxIdentity identity) {

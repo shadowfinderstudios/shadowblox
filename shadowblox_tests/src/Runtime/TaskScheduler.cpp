@@ -62,6 +62,22 @@ TEST_CASE("resume") {
 	luaSBX_close(L);
 }
 
+TEST_CASE("VM closed") {
+	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
+	TaskScheduler scheduler(nullptr);
+
+	SbxThreadData *udata = luaSBX_getthreaddata(L);
+	udata->global->scheduler = &scheduler;
+
+	CHECK_EVAL_OK(L, "wait(1)");
+	CHECK_EQ(lua_status(L), LUA_YIELD);
+	CHECK_EQ(scheduler.NumPendingTasks(), 1);
+
+	luaSBX_close(L);
+
+	CHECK_EQ(scheduler.NumPendingTasks(), 0);
+}
+
 TEST_CASE("wait") {
 	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	TaskScheduler scheduler(nullptr);
