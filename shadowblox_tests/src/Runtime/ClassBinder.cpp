@@ -32,6 +32,7 @@
 
 #include "ltm.h"
 #include "lua.h"
+#include "lualib.h"
 
 #include "Sbx/DataTypes/EnumTypes.gen.hpp"
 #include "Sbx/DataTypes/Types.hpp"
@@ -43,6 +44,14 @@
 using namespace SBX;
 
 TEST_SUITE_BEGIN("Runtime/ClassBinder");
+
+struct TestStruct2;
+
+namespace SBX {
+
+STACK_OP_UDATA_DEF(TestStruct2);
+
+}
 
 struct TestStruct2 {
 	int num;
@@ -88,6 +97,18 @@ struct TestStruct2 {
 	void operator()(int inc) {
 		num += inc;
 	}
+
+	static int NewRaw(lua_State *L) {
+		int num = luaL_optinteger(L, 2, 42);
+		LuauStackOp<TestStruct2>::Push(L, TestStruct2(num));
+		return 1;
+	}
+
+	static int SquareRaw(lua_State *L) {
+		TestStruct2 *self = LuauStackOp<TestStruct2 *>::Check(L, 1);
+		lua_pushnumber(L, self->num * self->num);
+		return 1;
+	}
 };
 
 TestStruct2 operator+(const TestStruct2 &x, const TestStruct2 &y) {
@@ -108,7 +129,6 @@ TestStruct2 operator*(const TestStruct2 &x, int y) {
 
 namespace SBX {
 
-STACK_OP_UDATA_DEF(TestStruct2);
 UDATA_STACK_OP_IMPL(TestStruct2, "TestStruct", "SbxTests.TestStruct", Test1Udata, NO_DTOR);
 
 } //namespace SBX
@@ -123,7 +143,9 @@ TEST_CASE("example") {
 	Binder::Init("TestStruct", "SbxTests.TestStruct", Test1Udata);
 
 	Binder::BindStaticMethod<"new", TestStruct2::New, NoneSecurity>();
+	Binder::BindLuauStaticMethod<"newraw", TestStruct2::NewRaw>();
 	Binder::BindMethod<"Square", &TestStruct2::Square, NoneSecurity>();
+	Binder::BindLuauMethod<"SquareRaw", TestStruct2::SquareRaw>();
 	Binder::BindMethod<"SetNum", &TestStruct2::SetNum, InternalTestSecurity>();
 	Binder::BindMethod<"SetAxis", &TestStruct2::SetAxis, InternalTestSecurity>();
 	Binder::BindProperty<"Num", &TestStruct2::GetNum, NoneSecurity, &TestStruct2::SetNum, InternalTestSecurity>();
@@ -147,6 +169,11 @@ TEST_CASE("example") {
 			CHECK_EQ(ts->num, 42);
 		});
 
+		EVAL_THEN(L, "return TestStruct.newraw()", {
+			TestStruct2 *ts = LuauStackOp<TestStruct2 *>::Get(L, -1);
+			CHECK_EQ(ts->num, 42);
+		});
+
 		CHECK_EVAL_EQ(L, "return getmetatable(TestStruct.new())", std::string, "The metatable is locked");
 
 		EVAL_THEN(L, "return TestStruct.new(1234)", {
@@ -155,6 +182,10 @@ TEST_CASE("example") {
 		});
 
 		EVAL_THEN(L, "return TestStruct.new(5):Square()", {
+			CHECK_EQ(lua_tonumber(L, -1), 25);
+		});
+
+		EVAL_THEN(L, "return TestStruct.new(5):SquareRaw()", {
 			CHECK_EQ(lua_tonumber(L, -1), 25);
 		});
 

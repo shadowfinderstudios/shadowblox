@@ -66,8 +66,6 @@ TEST_CASE("immediate") {
 			arg1 = nil
 			arg2 = nil
 
-			local conn
-
 			conn = signal:Connect(function(a1, a2)
 				hits += 1
 				arg1 = a1
@@ -81,9 +79,13 @@ TEST_CASE("immediate") {
 			end)
 		)ASDF")
 
+		CHECK_EVAL_EQ(L, "return conn.Connected", bool, true);
+
 		emitter->Emit("TestSignal", "abc", 123);
 		emitter->Emit("TestSignal", "def", 456);
 		emitter->Emit("TestSignal", "ghi", 789);
+
+		CHECK_EVAL_EQ(L, "return conn.Connected", bool, false);
 
 		lua_getglobal(L, "hits");
 		CHECK_EQ(lua_tonumber(L, -1), 2);
@@ -193,8 +195,6 @@ TEST_CASE("deferred") {
 			arg1 = nil
 			arg2 = nil
 
-			local conn
-
 			conn = signal:Connect(function(a1, a2)
 				hits += 1
 				arg1 = a1
@@ -207,6 +207,8 @@ TEST_CASE("deferred") {
 				onceHits += 1
 			end)
 		)ASDF")
+
+		CHECK_EVAL_EQ(L, "return conn.Connected", bool, true);
 
 		emitter->Emit("TestSignal", "abc", 123);
 		emitter->Emit("TestSignal", "def", 456);
@@ -224,6 +226,8 @@ TEST_CASE("deferred") {
 		lua_pop(L, 1);
 
 		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 1.0, 1.0);
+
+		CHECK_EVAL_EQ(L, "return conn.Connected", bool, false);
 
 		lua_getglobal(L, "hits");
 		CHECK_EQ(lua_tonumber(L, -1), 2);
