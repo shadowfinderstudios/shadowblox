@@ -61,7 +61,7 @@ enum BindPurpose : uint8_t {
 // https://www.reddit.com/r/cpp_questions/comments/pumi9r/comment/he3swe8
 template <auto N>
 struct StringLiteral {
-	char value[N];
+	char value[N]{};
 
 	constexpr StringLiteral(const char (&str)[N]) {
 		std::copy(str, str + N, value);
@@ -80,37 +80,40 @@ inline T luaSBX_checkarg(lua_State *L, int &index) {
 			if (E->FromValue(num)) {
 				index++;
 				return static_cast<T>(num);
-			} else {
-				if constexpr (purpose == BindSetter) {
-					luaL_error(L, "Unable to assign property %s. Invalid value %d for enum %s", name.value, num, E->GetName());
-				} else {
-					luaSBX_casterror(L, luaL_typename(L, index), E->GetName());
-				}
 			}
+
+			if constexpr (purpose == BindSetter) {
+				luaL_error(L, "Unable to assign property %s. Invalid value %d for enum %s", name.value, num, E->GetName());
+			} else {
+				luaSBX_casterror(L, luaL_typename(L, index), E->GetName());
+			}
+
 		} else if (lua_type(L, index) == LUA_TSTRING) {
 			const char *value = lua_tostring(L, index);
 			if (auto item = E->FromName(value)) {
 				index++;
 				return static_cast<T>((*item)->GetValue());
-			} else {
-				if constexpr (purpose == BindSetter) {
-					luaL_error(L, "Unable to assign property %s. Invalid value \"%s\" for enum %s", name.value, value, E->GetName());
-				} else {
-					luaSBX_casterror(L, luaL_typename(L, index), E->GetName());
-				}
 			}
+
+			if constexpr (purpose == BindSetter) {
+				luaL_error(L, "Unable to assign property %s. Invalid value \"%s\" for enum %s", name.value, value, E->GetName());
+			} else {
+				luaSBX_casterror(L, luaL_typename(L, index), E->GetName());
+			}
+
 		} else if (LuauStackOp<DataTypes::EnumItem *>::Is(L, index)) {
 			DataTypes::EnumItem *item = LuauStackOp<DataTypes::EnumItem *>::Get(L, index);
 			if (item->GetEnumType() == E) {
 				index++;
 				return static_cast<T>(item->GetValue());
-			} else {
-				if constexpr (purpose == BindSetter) {
-					luaL_error(L, "Unable to assign property %s. EnumItem of type %s expected, got an EnumItem of type %s", name.value, E->GetName(), item->GetEnumType()->GetName());
-				} else {
-					luaSBX_casterror(L, item->GetEnumType()->GetName(), E->GetName());
-				}
 			}
+
+			if constexpr (purpose == BindSetter) {
+				luaL_error(L, "Unable to assign property %s. EnumItem of type %s expected, got an EnumItem of type %s", name.value, E->GetName(), item->GetEnumType()->GetName());
+			} else {
+				luaSBX_casterror(L, item->GetEnumType()->GetName(), E->GetName());
+			}
+
 		} else {
 			if constexpr (purpose == BindSetter) {
 				luaL_error(L, "Unable to assign property %s. EnumItem, number, or string expected, got %s", name.value, luaL_typename(L, index));
@@ -125,15 +128,15 @@ inline T luaSBX_checkarg(lua_State *L, int &index) {
 	} else {
 		if (LuauStackOp<T>::Is(L, index)) {
 			return LuauStackOp<T>::Get(L, index++);
+		}
+
+		if constexpr (purpose == BindSetter) {
+			luaL_error(L, "Unable to assign property %s. %s expected, got %s", name.value, LuauStackOp<T>::NAME.c_str(), luaL_typename(L, index));
 		} else {
-			if constexpr (purpose == BindSetter) {
-				luaL_error(L, "Unable to assign property %s. %s expected, got %s", name.value, LuauStackOp<T>::NAME.c_str(), luaL_typename(L, index));
+			if (lua_isnoneornil(L, index)) {
+				luaSBX_missingargerror(L, index - ofs);
 			} else {
-				if (lua_isnoneornil(L, index)) {
-					luaSBX_missingargerror(L, index - ofs);
-				} else {
-					luaSBX_casterror(L, luaL_typename(L, index), LuauStackOp<T>::NAME.c_str());
-				}
+				luaSBX_casterror(L, luaL_typename(L, index), LuauStackOp<T>::NAME.c_str());
 			}
 		}
 	}
@@ -146,12 +149,12 @@ struct IsTuple : std::false_type {};
 template <typename... T>
 struct IsTuple<std::tuple<T...>> : std::true_type {
 	template <size_t... N>
-	static inline int Push(lua_State *L, const std::tuple<T...> &val, std::index_sequence<N...>) {
+	static int Push(lua_State *L, const std::tuple<T...> &val, std::index_sequence<N...> /*unused*/) {
 		(LuauStackOp<T>::Push(L, std::get<N>(val)), ...);
 		return sizeof...(T);
 	}
 
-	static inline int Push(lua_State *L, const std::tuple<T...> &val) {
+	static int Push(lua_State *L, const std::tuple<T...> &val) {
 		return Push(L, val, std::make_index_sequence<sizeof...(T)>());
 	}
 };
@@ -187,7 +190,7 @@ struct FuncType<R (*)(Args...), name, purpose> {
 	using RetType = R;
 	using ArgTypes = std::tuple<Args...>;
 
-	static inline R Invoke(lua_State *L, FuncPtrType func) {
+	static R Invoke(lua_State *L, FuncPtrType func) {
 		// C++ FUN FACT:
 		// (): Parameter pack expansion may not be evaluated in order
 		// {}: Evaluated in order
@@ -205,7 +208,7 @@ struct FuncType<R (T::*)(Args...), name, purpose> {
 	using ArgTypes = std::tuple<Args...>;
 
 	template <size_t... N>
-	static inline R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...>) {
+	static R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...> /*unused*/) {
 		int i = 2;
 		T *self = LuauStackOp<T *>::Get(L, 1);
 		if constexpr (purpose == BindFunction) {
@@ -217,7 +220,7 @@ struct FuncType<R (T::*)(Args...), name, purpose> {
 		return std::invoke(func, self, std::get<N>(args)...);
 	}
 
-	static inline R Invoke(lua_State *L, FuncPtrType func) {
+	static R Invoke(lua_State *L, FuncPtrType func) {
 		return Invoke(L, func, std::make_index_sequence<sizeof...(Args)>());
 	}
 };
@@ -230,7 +233,7 @@ struct FuncType<R (T::*)(Args...) const, name, purpose> {
 	using ArgTypes = std::tuple<Args...>;
 
 	template <size_t... N>
-	static inline R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...>) {
+	static R Invoke(lua_State *L, FuncPtrType func, std::index_sequence<N...> /*unused*/) {
 		int i = 2;
 		T *self = LuauStackOp<T *>::Get(L, 1);
 		if constexpr (purpose == BindFunction) {
@@ -242,7 +245,7 @@ struct FuncType<R (T::*)(Args...) const, name, purpose> {
 		return std::invoke(func, self, std::get<N>(args)...);
 	}
 
-	static inline R Invoke(lua_State *L, FuncPtrType func) {
+	static R Invoke(lua_State *L, FuncPtrType func) {
 		return Invoke(L, func, std::make_index_sequence<sizeof...(Args)>());
 	}
 };

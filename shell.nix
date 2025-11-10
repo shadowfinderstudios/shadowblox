@@ -30,6 +30,6 @@ pkgs.mkShell.override { stdenv = pkgs.clang19Stdenv; } {
 
     # Format + Lint
     alias f="treefmt && scripts/licenser"
-    alias l="git ls-files | grep -E '\.(cpp|hpp)$' | xargs clang-tidy"
+    alias l="git ls-files | grep -E '\.(cpp|hpp)$' | xargs clang-tidy --fix --fix-errors"
   '';
 }

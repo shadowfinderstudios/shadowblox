@@ -48,8 +48,8 @@ class SignalWaitTask : public ScheduledTask {
 public:
 	using ScheduledTask::ScheduledTask;
 
-	bool IsComplete(ResumptionPoint point);
-	int PushResults();
+	bool IsComplete(ResumptionPoint point) override;
+	int PushResults() override;
 
 private:
 	friend class SignalEmitter;
@@ -82,8 +82,9 @@ public:
 			auto connectionsCopy = connections[signal];
 			for (const auto &[id, conn] : connectionsCopy) {
 				SbxThreadData *udata = luaSBX_getthreaddata(conn.L);
-				if (!udata->global->scheduler)
+				if (!udata->global->scheduler) {
 					continue;
+				}
 
 				// Duplicate this reference: If this object is collected during
 				// the resumption period, then the original conn.ref will be
@@ -100,16 +101,18 @@ public:
 					lua_unref(conn.L, newRef);
 				});
 
-				if (conn.once)
+				if (conn.once) {
 					toRemove.push_back(id);
+				}
 			}
 		} else {
 			// Do not fire new connections during iteration
 			auto connectionsCopy = connections[signal];
 			for (const auto &[id, conn] : connectionsCopy) {
 				// Deleted during iteration
-				if (connections[signal].find(id) == connections[signal].end())
+				if (connections[signal].find(id) == connections[signal].end()) {
 					continue;
+				}
 
 				lua_getref(conn.L, conn.ref);
 
@@ -124,11 +127,13 @@ public:
 				}
 
 				immediateReentrancy[id]--;
-				if (firstEntrant)
+				if (firstEntrant) {
 					immediateReentrancy.clear();
+				}
 
-				if (conn.once)
+				if (conn.once) {
 					toRemove.push_back(id);
+				}
 			}
 		}
 

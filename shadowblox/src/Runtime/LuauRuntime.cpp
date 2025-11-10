@@ -55,11 +55,13 @@ LuauRuntime::~LuauRuntime() {
 }
 
 void LuauRuntime::InitVM(lua_State *L, bool debug) {
-	if (debug)
+	if (debug) {
 		luaSBX_debugcallbacks(L);
+	}
 
-	if (initCallback)
+	if (initCallback) {
 		initCallback(L);
+	}
 
 	// Seal main global state
 	luaL_sandbox(L);

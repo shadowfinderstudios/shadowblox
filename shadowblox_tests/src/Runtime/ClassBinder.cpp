@@ -22,9 +22,6 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Sbx/DataTypes/Enum.hpp"
-#include "Sbx/DataTypes/EnumItem.hpp"
-#include "Sbx/DataTypes/Types.hpp"
 #include "doctest.h"
 
 #include <optional>
@@ -34,6 +31,8 @@
 #include "lua.h"
 #include "lualib.h"
 
+#include "Sbx/DataTypes/Enum.hpp"
+#include "Sbx/DataTypes/EnumItem.hpp"
 #include "Sbx/DataTypes/EnumTypes.gen.hpp"
 #include "Sbx/DataTypes/Types.hpp"
 #include "Sbx/Runtime/Base.hpp"

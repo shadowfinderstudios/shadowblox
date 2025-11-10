@@ -39,8 +39,9 @@ namespace SBX {
 
 void luaSBX_reentrancyerror(lua_State *L, const char *signalName) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	if (!udata->global->logger)
+	if (!udata->global->logger) {
 		return;
+	}
 
 	lua_Debug ar;
 	// -1: Function on top of stack
@@ -95,8 +96,9 @@ uint64_t SignalEmitter::Connect(const std::string &signal, lua_State *L, bool on
 
 bool SignalEmitter::IsConnected(const std::string &signal, uint64_t id) const {
 	auto conns = connections.find(signal);
-	if (conns == connections.end())
+	if (conns == connections.end()) {
 		return false;
+	}
 	return conns->second.find(id) != conns->second.end();
 }
 
@@ -120,8 +122,9 @@ void SignalEmitter::Disconnect(const std::string &signal, uint64_t id, bool canc
 
 int SignalEmitter::Wait(const std::string &signal, lua_State *L) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	if (!udata->global->scheduler)
+	if (!udata->global->scheduler) {
 		luaSBX_noschederror(L);
+	}
 
 	SignalWaitTask *task = new SignalWaitTask(L);
 	udata->global->scheduler->AddTask(task);
@@ -160,12 +163,12 @@ void SignalConnectionOwner::RemoveConnection(SignalEmitter *emitter, uint64_t id
 	connections[emitter].erase(id);
 }
 
-bool SignalWaitTask::IsComplete(ResumptionPoint) {
+bool SignalWaitTask::IsComplete(ResumptionPoint /*point*/) {
 	return pushResults.operator bool();
 }
 
 int SignalWaitTask::PushResults() {
-	return pushResults(T);
+	return pushResults(GetThread());
 }
 
 } //namespace SBX

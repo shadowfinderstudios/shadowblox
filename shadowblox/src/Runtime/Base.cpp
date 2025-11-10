@@ -39,7 +39,7 @@
 namespace SBX {
 
 // Based on the default implementation seen in the Lua 5.1 reference
-static void *luaSBX_alloc(void *, void *ptr, size_t, size_t nsize) {
+static void *luaSBX_alloc(void * /*unused*/, void *ptr, size_t /*unused*/, size_t nsize) {
 	if (nsize == 0) {
 		free(ptr);
 		return nullptr;
@@ -89,8 +89,9 @@ static void luaSBX_userthread(lua_State *LP, lua_State *L) {
 lua_State *luaSBX_newstate(VMType vmType, SbxIdentity defaultIdentity) {
 	lua_State *L = lua_newstate(luaSBX_alloc, nullptr);
 
-	if (Luau::CodeGen::isSupported())
+	if (Luau::CodeGen::isSupported()) {
 		Luau::CodeGen::create(L);
+	}
 
 	// Base libraries
 	luaL_openlibs(L);
@@ -202,8 +203,9 @@ void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *
 	if (!luaSBX_iscapability(L, capability)) {
 		int permId = 0;
 		int32_t curr = capability;
-		while (curr >>= 1)
+		while (curr >>= 1) {
 			permId++;
+		}
 
 		SbxThreadData *udata = luaSBX_getthreaddata(L);
 		luaL_error(
@@ -241,8 +243,9 @@ void luaSBX_debugcallbacks(lua_State *L) {
 void luaSBX_cbinterrupt(lua_State *L, int gc) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 
-	if (udata->interruptDeadline == 0)
+	if (udata->interruptDeadline == 0) {
 		return;
+	}
 
 	if (gc < 0 && (uint64_t)(lua_clock() * 1e6) > udata->interruptDeadline) {
 		lua_checkstack(L, 1);

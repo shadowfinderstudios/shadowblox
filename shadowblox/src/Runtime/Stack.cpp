@@ -126,12 +126,14 @@ void LuauStackOp<int64_t>::Push(lua_State *L, const int64_t &value) {
 }
 
 int64_t LuauStackOp<int64_t>::Get(lua_State *L, int index) {
-	if (lua_isnumber(L, index))
+	if (lua_isnumber(L, index)) {
 		return lua_tonumber(L, index);
+	}
 
 	int64_t *udata = reinterpret_cast<int64_t *>(lua_touserdatatagged(L, index, Int64Udata));
-	if (udata)
+	if (udata) {
 		return *udata;
+	}
 
 	return 0;
 }
@@ -142,8 +144,9 @@ bool LuauStackOp<int64_t>::Is(lua_State *L, int index) {
 
 int64_t LuauStackOp<int64_t>::Check(lua_State *L, int index) {
 	int64_t *udata = reinterpret_cast<int64_t *>(lua_touserdatatagged(L, index, Int64Udata));
-	if (udata)
+	if (udata) {
 		return *udata;
+	}
 
 	return luaL_checknumber(L, index);
 }

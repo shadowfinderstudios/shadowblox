@@ -32,13 +32,15 @@
 using namespace godot;
 
 void initializeShadowbloxModule(ModuleInitializationLevel level) {
-	if (level != MODULE_INITIALIZATION_LEVEL_SCENE)
+	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
+	}
 }
 
 void uninitializeShadowbloxModule(ModuleInitializationLevel level) {
-	if (level != MODULE_INITIALIZATION_LEVEL_SCENE)
+	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
+	}
 }
 
 extern "C" {

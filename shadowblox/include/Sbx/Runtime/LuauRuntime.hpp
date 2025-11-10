@@ -49,7 +49,7 @@ public:
 
 private:
 	void (*initCallback)(lua_State *);
-	lua_State *vms[VMMax];
+	lua_State *vms[VMMax]{};
 	void InitVM(lua_State *L, bool debug);
 };
 

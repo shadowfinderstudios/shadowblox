@@ -75,10 +75,8 @@ public:
 	virtual int PushResults() = 0;
 	virtual void Update(uint64_t frame, double delta) {} // NOLINT
 
-protected:
-	lua_State *T;
-
 private:
+	lua_State *T;
 	int threadRef;
 };
 

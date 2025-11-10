@@ -54,11 +54,11 @@ class SignalConnectionOwner;
 enum UdataTag : uint8_t {
 	Int64Udata = 0,
 
-	EnumItemUdata,
-	EnumUdata,
-	EnumsUdata,
-	RBXScriptSignalUdata,
-	RBXScriptConnectionUdata,
+	EnumItemUdata = 1,
+	EnumUdata = 2,
+	EnumsUdata = 3,
+	RBXScriptSignalUdata = 4,
+	RBXScriptConnectionUdata = 5,
 
 	Test1Udata = 124,
 	Test2Udata = 125,

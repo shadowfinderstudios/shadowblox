@@ -3,12 +3,33 @@ Checks:
 - bugprone-*
 - clang-analyzer-*
 - performance-*
-- cppcoreguidelines-init-variables
+- readability-*
+- cppcoreguidelines-*
 - misc-include-cleaner
 - readability-identifier-naming
 - -bugprone-easily-swappable-parameters
 - -bugprone-narrowing-conversions
 - -bugprone-macro-parentheses
+- -readability-magic-numbers
+- -readability-identifier-length
+- -readability-function-cognitive-complexity
+- -readability-implicit-bool-conversion
+- -readability-convert-member-functions-to-static
+- -readability-function-size
+- -cppcoreguidelines-avoid-magic-numbers
+- -cppcoreguidelines-avoid-do-while
+- -cppcoreguidelines-avoid-c-arrays
+- -cppcoreguidelines-macro-usage
+- -cppcoreguidelines-no-malloc
+- -cppcoreguidelines-owning-memory
+- -cppcoreguidelines-narrowing-conversions
+- -cppcoreguidelines-prefer-member-initializer
+- -cppcoreguidelines-pro-bounds-pointer-arithmetic
+- -cppcoreguidelines-pro-bounds-array-to-pointer-decay
+- -cppcoreguidelines-pro-type-reinterpret-cast
+- -cppcoreguidelines-pro-type-cstyle-cast
+- -cppcoreguidelines-pro-type-vararg
+- -cppcoreguidelines-pro-bounds-constant-array-index
 FormatStyle: none
 HeaderFileExtensions: [h, hpp]
 ImplementationFileExtensions: [c, cpp]

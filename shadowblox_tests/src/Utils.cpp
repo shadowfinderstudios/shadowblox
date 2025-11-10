@@ -46,7 +46,9 @@ ExecOutput luaSBX_exec(lua_State *L, const char *src) {
 
 		if (status == LUA_OK) {
 			return output;
-		} else if (status == LUA_YIELD) {
+		}
+
+		if (status == LUA_YIELD) {
 			INFO("thread yielded");
 			return output;
 		}

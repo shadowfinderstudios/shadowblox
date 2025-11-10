@@ -72,18 +72,20 @@ const std::vector<EnumItem *> &Enum::GetEnumItems() const {
 
 std::optional<EnumItem *> Enum::FromName(const char *name) {
 	auto it = nameToItem.find(name);
-	if (it != nameToItem.end())
+	if (it != nameToItem.end()) {
 		return it->second;
-	else
-		return std::nullopt;
+	}
+
+	return std::nullopt;
 }
 
 std::optional<EnumItem *> Enum::FromValue(int value) {
 	auto it = valueToItem.find(value);
-	if (it != valueToItem.end())
+	if (it != valueToItem.end()) {
 		return it->second;
-	else
-		return std::nullopt;
+	}
+
+	return std::nullopt;
 }
 
 void Enum::AddItem(EnumItem *item) {

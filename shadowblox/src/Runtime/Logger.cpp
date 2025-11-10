@@ -78,16 +78,19 @@ void Logger::RemoveHook(LogCallback hook) {
 
 static int luaSBX_print(lua_State *L) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	if (!udata->global->logger)
+	if (!udata->global->logger) {
 		luaSBX_nologerror(L);
+	}
 
 	std::string output;
 
 	int n = lua_gettop(L);
 	for (int i = 1; i <= n; i++) {
 		const char *str = lua_tostring(L, i);
-		if (i > 1)
+		if (i > 1) {
 			output += ' ';
+		}
+
 		output += str;
 	}
 
@@ -97,16 +100,19 @@ static int luaSBX_print(lua_State *L) {
 
 static int luaSBX_warn(lua_State *L) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
-	if (!udata->global->logger)
+	if (!udata->global->logger) {
 		luaSBX_nologerror(L);
+	}
 
 	std::string output;
 
 	int n = lua_gettop(L);
 	for (int i = 1; i <= n; i++) {
 		const char *str = lua_tostring(L, i);
-		if (i > 1)
+		if (i > 1) {
 			output += ' ';
+		}
+
 		output += str;
 	}
 

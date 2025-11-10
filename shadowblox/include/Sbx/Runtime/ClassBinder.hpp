@@ -140,10 +140,11 @@ public:
 		}
 
 		lua_setreadonly(L, -1, true);
-		if (udataTag >= 0)
+		if (udataTag >= 0) {
 			lua_setuserdatametatable(L, udataTag);
-		else
+		} else {
 			lua_pop(L, 1);
+		}
 	}
 
 	/**
@@ -368,7 +369,7 @@ private:
 	static int udataTag;
 
 	struct Method {
-		lua_CFunction func;
+		lua_CFunction func = nullptr;
 		std::string debugName;
 	};
 

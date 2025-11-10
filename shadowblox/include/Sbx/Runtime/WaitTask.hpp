@@ -37,7 +37,7 @@ public:
 	WaitTask(lua_State *T, double duration, bool legacyThrottling);
 
 	bool CanThrottle() override { return legacyThrottling; }
-	bool IsComplete(ResumptionPoint) override;
+	bool IsComplete(ResumptionPoint /*point*/) override;
 	int PushResults() override;
 	void Update(uint64_t frame, double delta) override;
 

@@ -124,9 +124,9 @@ struct LuauStackOp<std::optional<T>> {
 	static std::optional<T> Get(lua_State *L, int index) {
 		if (LuauStackOp<T>::Is(L, index)) {
 			return LuauStackOp<T>::Get(L, index);
-		} else {
-			return std::nullopt;
 		}
+
+		return std::nullopt;
 	}
 
 	static bool Is(lua_State *L, int index) {
