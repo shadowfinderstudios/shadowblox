@@ -137,22 +137,21 @@ void TaskScheduler::AddTask(ScheduledTask *task) {
 	tasks.push_back(task);
 }
 
-void TaskScheduler::AddDeferredEvent(const char *name, SignalEmitter *emitter, uint64_t id, lua_State *L, std::function<void()> resume) {
+bool TaskScheduler::AddDeferredEvent(SignalEmitter *emitter, uint64_t id, lua_State *L, std::function<void()> resume) {
 	if (currentReentrancy[emitter][id] >= DEFERRED_EVENT_REENTRANCY_LIMIT) {
-		// Function must be on top of stack
-		luaSBX_reentrancyerror(L, name);
-	} else {
-		lua_pop(L, 1); // function
-
-		auto childReentrancy = currentReentrancy;
-		childReentrancy[emitter][id]++;
-
-		deferredEvents.push_back({ emitter,
-				id,
-				L,
-				std::move(resume),
-				std::move(childReentrancy) });
+		return false;
 	}
+
+	auto childReentrancy = currentReentrancy;
+	childReentrancy[emitter][id]++;
+
+	deferredEvents.push_back({ emitter,
+			id,
+			L,
+			std::move(resume),
+			std::move(childReentrancy) });
+
+	return true;
 }
 
 void TaskScheduler::CancelTask(ScheduledTask *task) {

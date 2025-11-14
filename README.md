@@ -8,8 +8,8 @@
 > requests are accepted from both sites, but pushes only occur from Forgejo.
 
 Shadow `DataModel` and script runner emulating Roblox APIs and behaviors. Hooks
-into a frontend that provides rendering, input, physics, networking, etc., such
-as [Godot](https://godotengine.org/) or another game engine. Like
+into a frontend that provides rendering, input, etc., such as
+[Godot](https://godotengine.org/) or another game engine. Like
 [React](https://react.dev/), but for games.
 
 This project is not affiliated with Roblox Corporation.

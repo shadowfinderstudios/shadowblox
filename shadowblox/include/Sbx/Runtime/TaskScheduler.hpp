@@ -95,7 +95,7 @@ public:
 	TaskScheduler(LuauRuntime *runtime);
 
 	void AddTask(ScheduledTask *task);
-	void AddDeferredEvent(const char *name, SignalEmitter *emitter, uint64_t id, lua_State *L, std::function<void()> resume);
+	bool AddDeferredEvent(SignalEmitter *emitter, uint64_t id, lua_State *L, std::function<void()> resume);
 	void CancelTask(ScheduledTask *task);
 	void CancelThread(lua_State *L);
 	void CancelEvents(SignalEmitter *emitter, uint64_t id);

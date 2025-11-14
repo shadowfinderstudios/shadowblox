@@ -44,8 +44,8 @@ namespace SBX::DataTypes {
 RBXScriptSignal::RBXScriptSignal() {
 }
 
-RBXScriptSignal::RBXScriptSignal(std::shared_ptr<SignalEmitter> emitter, std::string name) :
-		emitter(std::move(emitter)), name(std::move(name)) {
+RBXScriptSignal::RBXScriptSignal(std::shared_ptr<SignalEmitter> emitter, std::string name, SbxCapability security) :
+		emitter(std::move(emitter)), name(std::move(name)), security(security) {
 }
 
 void RBXScriptSignal::Register(lua_State *L) {
@@ -71,6 +71,8 @@ int RBXScriptSignal::Connect(lua_State *L) {
 		luaL_error(L, "Attempt to connect failed: Passed value is not a function");
 	}
 
+	luaSBX_checkcapability(L, self->security, "connect", self->name.c_str());
+
 	uint64_t id = self->emitter->Connect(self->name, L, false);
 	LuauStackOp<RBXScriptConnection>::Push(L, RBXScriptConnection(self->emitter, self->name, id));
 	return 1;
@@ -81,6 +83,8 @@ int RBXScriptSignal::Once(lua_State *L) {
 	if (!lua_isfunction(L, 2)) {
 		luaL_error(L, "Attempt to connect failed: Passed value is not a function");
 	}
+
+	luaSBX_checkcapability(L, self->security, "connect", self->name.c_str());
 
 	uint64_t id = self->emitter->Connect(self->name, L, true);
 	LuauStackOp<RBXScriptConnection>::Push(L, RBXScriptConnection(self->emitter, self->name, id));

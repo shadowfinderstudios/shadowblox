@@ -29,6 +29,7 @@
 
 #include "lua.h"
 
+#include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
 namespace SBX {
@@ -46,7 +47,7 @@ namespace SBX::DataTypes {
 class RBXScriptSignal {
 public:
 	RBXScriptSignal(); // required for stack operation
-	RBXScriptSignal(std::shared_ptr<SignalEmitter> emitter, std::string name);
+	RBXScriptSignal(std::shared_ptr<SignalEmitter> emitter, std::string name, SbxCapability security = NoneSecurity);
 
 	static void Register(lua_State *L);
 
@@ -62,6 +63,7 @@ private:
 	// emitter owner is collected.
 	std::shared_ptr<SignalEmitter> emitter;
 	std::string name;
+	SbxCapability security = NoneSecurity;
 };
 
 } //namespace SBX::DataTypes

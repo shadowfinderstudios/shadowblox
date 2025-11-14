@@ -16,6 +16,7 @@ Checks:
 - -readability-implicit-bool-conversion
 - -readability-convert-member-functions-to-static
 - -readability-function-size
+- -cppcoreguidelines-use-enum-class
 - -cppcoreguidelines-avoid-magic-numbers
 - -cppcoreguidelines-avoid-do-while
 - -cppcoreguidelines-avoid-c-arrays

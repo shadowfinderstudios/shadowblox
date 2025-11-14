@@ -281,17 +281,17 @@ TEST_CASE("example") {
 
 	SUBCASE("no permission to call") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5):SetNum(2)", "exec:1: The current identity (2) cannot call 'SetNum' (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5):SetNum(2)", "exec:1: The current thread cannot call 'SetNum' (lacking capability InternalTest)");
 	}
 
 	SUBCASE("no permission to write") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "TestStruct.new(5).Num = 9", "exec:1: The current identity (2) cannot write 'Num' (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "TestStruct.new(5).Num = 9", "exec:1: The current thread cannot write 'Num' (lacking capability InternalTest)");
 	}
 
 	SUBCASE("no permission to use operator") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "(TestStruct.new())()", "exec:1: The current identity (2) cannot use operator (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "(TestStruct.new())()", "exec:1: The current thread cannot use operator (lacking capability InternalTest)");
 	}
 
 	SUBCASE("invalid enum property enum type") {

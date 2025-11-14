@@ -94,7 +94,7 @@ TEST_CASE("static") {
 
 	SUBCASE("missing permission") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "testVoid()", "exec:1: The current identity (2) cannot call 'testVoid' (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "testVoid()", "exec:1: The current thread cannot call 'testVoid' (lacking capability InternalTest)");
 	}
 
 	luaSBX_close(L);
@@ -163,7 +163,7 @@ TEST_CASE("class") {
 
 	SUBCASE("missing permission") {
 		udata->identity = GameScriptIdentity;
-		CHECK_EVAL_FAIL(L, "TestFuncConst()", "exec:1: The current identity (2) cannot call 'TestFuncConst' (lacking permission 17)");
+		CHECK_EVAL_FAIL(L, "TestFuncConst()", "exec:1: The current thread cannot call 'TestFuncConst' (lacking capability InternalTest)");
 	}
 
 	luaSBX_close(L);

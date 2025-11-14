@@ -29,7 +29,6 @@
 #include <cstdint>
 #include <exception>
 #include <functional>
-#include <string>
 #include <tuple>
 #include <type_traits>
 #include <utility>
@@ -274,12 +273,7 @@ int luaSBX_bindcxx(lua_State *L) {
 			"use operator"
 		};
 
-		if constexpr (name.value[0]) {
-			static std::string action = std::string(purposes[purpose]) + " '" + name.value + '\'';
-			luaSBX_checkcapability(L, capability, action.c_str());
-		} else {
-			luaSBX_checkcapability(L, capability, purposes[purpose]);
-		}
+		luaSBX_checkcapability(L, capability, purposes[purpose], name.value);
 	}
 
 	using FT = FuncType<TF, name, purpose>;

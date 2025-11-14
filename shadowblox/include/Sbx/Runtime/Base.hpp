@@ -85,6 +85,7 @@ enum SbxIdentity : uint8_t {
 	IdentityMax
 };
 
+// NOTE: grep "DEPENDS SbxCapability"
 enum SbxCapability {
 	// NoneSecurity is ID 0
 	// All others are 1 << ID
@@ -139,7 +140,7 @@ void luaSBX_close(lua_State *L);
 int32_t identityToCapabilities(SbxIdentity identity);
 
 bool luaSBX_iscapability(lua_State *L, SbxCapability capability);
-void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *actionDesc);
+void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *action, const char *target);
 
 bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, void *ptr), bool weak);
 

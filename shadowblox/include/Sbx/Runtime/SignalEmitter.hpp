@@ -76,7 +76,7 @@ public:
 	int NumConnections() const;
 
 	template <typename... Args>
-	void Emit(const std::string &signal, const char *debugName, Args... args) {
+	void Emit(const char *className, const std::string &signal, Args... args) {
 		std::vector<uint64_t> toRemove;
 
 		if (deferred) {
@@ -93,14 +93,20 @@ public:
 				// destroyed before the resumption of the event handler.
 				lua_getref(conn.L, conn.ref);
 				int newRef = lua_ref(conn.L, -1);
-				// Leave function on stack for AddDeferredEvent
 
-				udata->global->scheduler->AddDeferredEvent(debugName, this, id, conn.L, [=]() {
+				bool created = udata->global->scheduler->AddDeferredEvent(this, id, conn.L, [=]() {
 					lua_getref(conn.L, newRef);
 					(LuauStackOp<Args>::Push(conn.L, args), ...);
 					luaSBX_pcall(conn.L, sizeof...(Args), 0, 0);
 					lua_unref(conn.L, newRef);
 				});
+
+				if (created) {
+					lua_pop(conn.L, 1); // function
+				} else {
+					std::string debugName = std::string(className) + '.' + signal;
+					luaSBX_reentrancyerror(conn.L, debugName.c_str());
+				}
 
 				if (conn.once) {
 					toRemove.push_back(id);
@@ -120,7 +126,8 @@ public:
 				bool firstEntrant = immediateReentrancy.empty();
 
 				if (++immediateReentrancy[id] > IMMEDIATE_EVENT_REENTRANCY_LIMIT) {
-					luaSBX_reentrancyerror(conn.L, debugName);
+					std::string debugName = std::string(className) + '.' + signal;
+					luaSBX_reentrancyerror(conn.L, debugName.c_str());
 				} else {
 					(LuauStackOp<Args>::Push(conn.L, args), ...);
 					luaSBX_pcall(conn.L, sizeof...(Args), 0, 0);

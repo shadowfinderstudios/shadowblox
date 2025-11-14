@@ -81,9 +81,9 @@ TEST_CASE("immediate") {
 
 		CHECK_EVAL_EQ(L, "return conn.Connected", bool, true);
 
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "abc", 123);
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "def", 456);
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "ghi", 789);
+		emitter->Emit("TestEmitter", "TestSignal", "abc", 123);
+		emitter->Emit("TestEmitter", "TestSignal", "def", 456);
+		emitter->Emit("TestEmitter", "TestSignal", "ghi", 789);
 
 		CHECK_EVAL_EQ(L, "return conn.Connected", bool, false);
 
@@ -114,7 +114,7 @@ TEST_CASE("immediate") {
 		lua_setglobal(L, "signal2");
 
 		lua_pushcfunction(L, [](lua_State *) -> int {
-			emitter->Emit("TestSignal2", "TestEmitter.TestSignal2");
+			emitter->Emit("TestEmitter", "TestSignal2");
 			return 0; }, "emit2");
 		lua_setglobal(L, "emit2");
 
@@ -132,7 +132,7 @@ TEST_CASE("immediate") {
 			end)
 		)ASDF")
 
-		emitter->Emit("TestSignal1", "TestEmitter.TestSignal1");
+		emitter->Emit("TestEmitter", "TestSignal1");
 
 		lua_getglobal(L, "hits2");
 		CHECK_EQ(lua_tonumber(L, -1), 8);
@@ -145,7 +145,7 @@ TEST_CASE("immediate") {
 		lua_setglobal(L, "signal");
 
 		lua_pushcfunction(L, [](lua_State *) -> int {
-			emitter->Emit("TestSignal", "TestEmitter.TestSignal");
+			emitter->Emit("TestEmitter", "TestSignal");
 			return 0; }, "emit");
 		lua_setglobal(L, "emit");
 
@@ -158,7 +158,7 @@ TEST_CASE("immediate") {
 			end)
 		)ASDF")
 
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal");
+		emitter->Emit("TestEmitter", "TestSignal");
 
 		lua_getglobal(L, "hits");
 		CHECK_EQ(lua_tonumber(L, -1), 6);
@@ -211,10 +211,10 @@ TEST_CASE("deferred") {
 
 		CHECK_EVAL_EQ(L, "return conn.Connected", bool, true);
 
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "abc", 123);
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "def", 456);
+		emitter->Emit("TestEmitter", "TestSignal", "abc", 123);
+		emitter->Emit("TestEmitter", "TestSignal", "def", 456);
 		// This resumption should be queued but canceled by Disconnect
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal", "ghi", 789);
+		emitter->Emit("TestEmitter", "TestSignal", "ghi", 789);
 
 		CHECK_EQ(scheduler.NumPendingEvents(), 4);
 
@@ -261,7 +261,7 @@ TEST_CASE("deferred") {
 		lua_setglobal(L, "signal2");
 
 		lua_pushcfunction(L, [](lua_State *) -> int {
-		emitter->Emit("TestSignal2", "TestEmitter.TestSignal2");
+		emitter->Emit("TestEmitter", "TestSignal2");
 		return 0; }, "emit2");
 		lua_setglobal(L, "emit2");
 
@@ -280,7 +280,7 @@ TEST_CASE("deferred") {
 		)ASDF")
 
 		for (int i = 0; i < 16; i++) {
-			emitter->Emit("TestSignal1", "TestEmitter.TestSignal1");
+			emitter->Emit("TestEmitter", "TestSignal1");
 		}
 
 		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 1.0, 1.0);
@@ -300,7 +300,7 @@ TEST_CASE("deferred") {
 		lua_setglobal(L, "signal");
 
 		lua_pushcfunction(L, [](lua_State *) -> int {
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal");
+		emitter->Emit("TestEmitter", "TestSignal");
 		return 0; }, "emit");
 		lua_setglobal(L, "emit");
 
@@ -313,7 +313,7 @@ TEST_CASE("deferred") {
 			end)
 		)ASDF")
 
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal");
+		emitter->Emit("TestEmitter", "TestSignal");
 
 		scheduler.Resume(ResumptionPoint::Heartbeat, 1, 1.0, 1.0);
 
@@ -342,7 +342,7 @@ TEST_CASE("deferred") {
 		lua_setglobal(L, "signal");
 		lua_gc(L, LUA_GCCOLLECT, 0);
 
-		emitter->Emit("TestSignal", "TestEmitter.TestSignal");
+		emitter->Emit("TestEmitter", "TestSignal");
 
 		lua_getglobal(L, "hits");
 		CHECK_EQ(lua_tonumber(L, -1), 0);
@@ -386,7 +386,7 @@ TEST_CASE("wait") {
 	scheduler.Resume(ResumptionPoint::Heartbeat, 1, 1.0, 1.0);
 	REQUIRE_EQ(lua_status(L), LUA_YIELD);
 
-	emitter->Emit("TestSignal", "TestEmitter.TestSignal", "abc", 123);
+	emitter->Emit("TestEmitter", "TestSignal", "abc", 123);
 	scheduler.Resume(ResumptionPoint::Heartbeat, 1, 1.0, 1.0);
 	REQUIRE_EQ(lua_status(L), LUA_OK);
 
@@ -433,6 +433,22 @@ TEST_CASE("Luau API") {
 		lua_setglobal(L, "signal");
 
 		CHECK_EVAL_EQ(L, "return tostring(signal:Connect(function() end))", std::string, "Connection");
+	}
+
+	SUBCASE("Connect security") {
+		RBXScriptSignal signal(emitter, "TestSignal", NotAccessibleSecurity);
+		LuauStackOp<RBXScriptSignal>::Push(L, signal);
+		lua_setglobal(L, "signal");
+
+		CHECK_EVAL_FAIL(L, "signal:Connect(function() end)", "exec:1: The current thread cannot connect 'TestSignal' (lacking capability NotAccessible)");
+	}
+
+	SUBCASE("Once security") {
+		RBXScriptSignal signal(emitter, "TestSignal", NotAccessibleSecurity);
+		LuauStackOp<RBXScriptSignal>::Push(L, signal);
+		lua_setglobal(L, "signal");
+
+		CHECK_EVAL_FAIL(L, "signal:Once(function() end)", "exec:1: The current thread cannot connect 'TestSignal' (lacking capability NotAccessible)");
 	}
 
 	luaSBX_close(L);

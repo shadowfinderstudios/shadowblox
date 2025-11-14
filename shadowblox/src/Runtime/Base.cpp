@@ -199,7 +199,32 @@ bool luaSBX_iscapability(lua_State *L, SbxCapability capability) {
 	return (threadCapability & capability) == capability;
 }
 
-void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *actionDesc) {
+void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *action, const char *target) {
+	// ! DEPENDS SbxCapability
+	static const char *CAP_NAMES[] = {
+		"",
+		"Plugin",
+		"",
+		"LocalUser",
+		"WritePlayer",
+		"RobloxScript",
+		"Roblox",
+		"NotAccessible",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"",
+		"Assistant",
+		"InternalTest",
+		"OpenCloud",
+		"RemoteCommand",
+		"Unknown",
+	};
+
 	if (!luaSBX_iscapability(L, capability)) {
 		int permId = 0;
 		int32_t curr = capability;
@@ -207,10 +232,13 @@ void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *
 			permId++;
 		}
 
-		SbxThreadData *udata = luaSBX_getthreaddata(L);
-		luaL_error(
-				L, "The current identity (%d) cannot %s (lacking permission %d)",
-				udata->identity, actionDesc, permId);
+		if (*target) {
+			luaL_error(L, "The current thread cannot %s '%s' (lacking capability %s)",
+					action, target, CAP_NAMES[permId]);
+		} else {
+			luaL_error(L, "The current thread cannot %s (lacking capability %s)",
+					action, CAP_NAMES[permId]);
+		}
 	}
 }
 
