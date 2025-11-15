@@ -22,35 +22,40 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 ################################################################################
 
-import json
-from pathlib import Path
+import argparse
 
-from .enums import generate_enums
+from . import api, licenser
 
-enum_header_path = "include/Sbx/DataTypes/EnumTypes.gen.hpp"
-enum_source_path = "src/DataTypes/EnumTypes.gen.cpp"
+####################
+# Argument parsing #
+####################
 
+parser = argparse.ArgumentParser(
+    prog="sbxcg", description="Code generation and API dump tooling for shadowblox"
+)
+subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
-def emit_files(target, source, env):
-    in_files = [env.File("#sbxcg/data/api_dump.json")]
+# API
+api_parser = subparsers.add_parser("api", description="API dump tools")
+api_subparsers = api_parser.add_subparsers(dest="api_subcommand", required=True)
 
-    out_files = [
-        env.File(enum_header_path),
-        env.File(enum_source_path),
-    ]
+api_subparsers.add_parser("download", description="Download the API dump")
 
-    env.Clean(out_files, target)
+# Codegen
+gen_parser = subparsers.add_parser("gen", description="Code generation tools")
+gen_subparsers = gen_parser.add_subparsers(dest="gen_subcommand", required=True)
 
-    return target + out_files, source + in_files
+# Licenser
+licenser_parser = subparsers.add_parser(
+    "licenser", description="License header checker"
+)
 
+args = parser.parse_args()
 
-def generate_bindings(target, source, env):
-    api = None
-    with open(str(source[0])) as api_file:
-        api = json.load(api_file)
-
-    base_path = Path(__file__).parent / ".."
-
-    generate_enums(api, base_path / enum_header_path, base_path / enum_source_path)
-
-    return None
+if args.subcommand == "api":
+    if args.api_subcommand == "download":
+        api.download_dump()
+elif args.subcommand == "gen":
+    pass
+elif args.subcommand == "licenser":
+    licenser.run()
