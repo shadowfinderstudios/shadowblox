@@ -102,3 +102,21 @@ header_py = """# SPDX-License-Identifier: LGPL-3.0-or-later
 ################################################################################
 
 """
+
+type_map = {
+    # Primitives
+    "null": {"type": "void"},
+    "bool": {"type": "bool"},
+    "int": {"type": "int"},
+    "int64": {"type": "int64_t", "include": "<cstdint>"},
+    "float": {"type": "float"},
+    "double": {"type": "double"},
+    "string": {"type": "const char *"},
+    # Data types
+    "RBXScriptSignal": {
+        "type": "DataTypes::RBXScriptSignal",
+        "include": '"Sbx/DataTypes/RBXScriptSignal.hpp"',
+    },
+}
+
+auto_tags = {"ReadOnly", "CustomLuaState", "NotScriptable"}

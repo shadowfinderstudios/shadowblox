@@ -25,11 +25,12 @@
 import os
 import re
 import subprocess
+import typing
 
 from . import constants
 
 
-def handle_ext(path, header, header_regex, f):
+def handle_ext(path: str, header: str, header_regex: str, f: typing.TextIO):
     contents = f.read()
     res = re.match(header_regex, contents)
     if res and res.group(0).strip() == header.strip():
