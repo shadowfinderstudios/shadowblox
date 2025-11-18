@@ -242,7 +242,7 @@ void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *
 	}
 }
 
-bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, void *ptr), bool weak) {
+bool luaSBX_pushregistry(lua_State *L, void *ptr, void *userdata, void (*push)(lua_State *L, void *ptr, void *userdata), bool weak) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 	lua_getref(L, weak ? udata->weakObjRegistry : udata->objRegistry);
 	lua_pushlightuserdata(L, ptr);
@@ -253,7 +253,7 @@ bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, voi
 	if (res) {
 		lua_pop(L, 1); // nil
 
-		push(L, ptr);
+		push(L, ptr, userdata);
 		lua_pushlightuserdata(L, ptr);
 		lua_pushvalue(L, -2);
 		lua_settable(L, -4);

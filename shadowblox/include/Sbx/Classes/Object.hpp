@@ -1,0 +1,203 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+/*******************************************************************************
+ * shadowblox - https://git.seki.pw/Fumohouse/shadowblox
+ *
+ * Copyright 2025-present ksk.
+ * Copyright 2025-present shadowblox contributors.
+ *
+ * Licensed under the GNU Lesser General Public License version 3.0 or later.
+ * See COPYRIGHT.txt for more details.
+ *
+ * This program is free software: you can redistribute it and/or modify it under
+ * the terms of the GNU Lesser General Public License as published by the Free
+ * Software Foundation, either version 3 of the License, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+ * FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more
+ * details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ ******************************************************************************/
+
+#pragma once
+
+#include <any>
+#include <memory>
+#include <optional>
+#include <string>
+#include <type_traits>
+
+#include "lua.h"
+#include "lualib.h"
+
+#include "Sbx/Classes/ClassDB.hpp"
+#include "Sbx/Runtime/Base.hpp"
+#include "Sbx/Runtime/SignalEmitter.hpp"
+#include "Sbx/Runtime/Stack.hpp"
+
+namespace SBX {
+
+namespace Classes {
+
+class Object;
+
+template <typename T>
+concept IsObject = std::is_base_of<Object, T>::value;
+
+}; //namespace Classes
+
+template <typename T>
+requires Classes::IsObject<T> struct LuauStackOp<std::shared_ptr<T>> {
+	using Ref = std::shared_ptr<T>;
+	static const std::string NAME;
+
+	static void PushRaw(lua_State *L, void * /* unused */, void *userdata) {
+		Ref *udata = reinterpret_cast<Ref *>(lua_newuserdatadtor(L, sizeof(Ref), [](void *udata) {
+			reinterpret_cast<Ref *>(udata)->~Ref();
+		}));
+		new (udata) Ref();
+		*udata = *reinterpret_cast<const Ref *>(userdata);
+
+		luaL_getmetatable(L, (*udata)->GetClassName());
+		if (lua_isnil(L, -1)) {
+			luaL_error(L, "metatable for object %s missing", (*udata)->GetClassName());
+		}
+
+		lua_setmetatable(L, -2);
+	}
+
+	static void Push(lua_State *L, const Ref &value) {
+		luaSBX_pushregistry(L, value.get(), (void *)&value, PushRaw, true);
+	}
+
+	static Ref *GetPtr(lua_State *L, int index) {
+		if (!Is(L, index)) {
+			return nullptr;
+		}
+
+		return reinterpret_cast<Ref *>(lua_touserdata(L, index));
+	}
+
+	static Ref Get(lua_State *L, int index) {
+		return *GetPtr(L, index);
+	}
+
+	static bool Is(lua_State *L, int index) {
+		return Classes::ClassDB::IsA(luaL_typename(L, index), T::NAME);
+	}
+
+	static Ref *CheckPtr(lua_State *L, int index) {
+		if (!Is(L, index)) {
+			luaL_typeerrorL(L, index, T::NAME);
+		}
+
+		return reinterpret_cast<Ref *>(lua_touserdata(L, index));
+	}
+
+	static Ref Check(lua_State *L, int index) {
+		return *CheckPtr(L, index);
+	}
+};
+
+template <typename T>
+requires Classes::IsObject<T> const std::string LuauStackOp<std::shared_ptr<T>>::NAME = T::NAME;
+
+template <typename T>
+requires Classes::IsObject<T> struct LuauStackOp<T *> {
+	static const std::string NAME;
+
+	// No implementation of Push.
+
+	static T *Get(lua_State *L, int index) {
+		auto ptr = LuauStackOp<std::shared_ptr<T>>::GetPtr(L, index);
+		return ptr ? ptr->get() : nullptr;
+	}
+
+	static bool Is(lua_State *L, int index) {
+		return LuauStackOp<std::shared_ptr<T>>::Is(L, index);
+	}
+
+	static T *Check(lua_State *L, int index) {
+		return LuauStackOp<std::shared_ptr<T>>::CheckPtr(L, index)->get();
+	}
+};
+
+template <typename T>
+requires Classes::IsObject<T> const std::string LuauStackOp<T *>::NAME = T::NAME;
+
+} //namespace SBX
+
+namespace SBX::Classes {
+
+class ObjectBase {
+public:
+	ObjectBase() = default;
+	virtual ~ObjectBase() = default;
+
+	ObjectBase(const ObjectBase &) = default;
+	ObjectBase(ObjectBase &&) = default;
+	ObjectBase &operator=(const ObjectBase &) = default;
+	ObjectBase &operator=(ObjectBase &&) = default;
+
+	virtual const char *GetClassName() const = 0;
+};
+
+/**
+ * @brief This class implements Roblox's [`Object`](https://create.roblox.com/docs/reference/engine/classes/Object)
+ * class.
+ */
+class Object : public ObjectBase {
+	SBXCLASS(Object, , MemoryCategory::Instances, ClassTag::NotCreatable, ClassTag::NotReplicated);
+
+public:
+	~Object() override;
+
+	bool IsA(const char *className) const;
+
+	template <typename T>
+	std::optional<T> Get(const std::string &property) {
+		if (const ClassDB::Property *prop = ClassDB::GetProperty(GetClassName(), property)) {
+			std::any val = prop->getter(this);
+			if (val.type() == typeid(T)) {
+				return std::any_cast<T>(val);
+			}
+		}
+
+		return std::nullopt;
+	}
+
+	template <typename T>
+	bool Set(const std::string &property, const std::decay_t<T> &value) {
+		if (const ClassDB::Property *prop = ClassDB::GetProperty(GetClassName(), property)) {
+			return prop->setter(this, value);
+		}
+
+		return false;
+	}
+
+protected:
+	Object();
+
+	void PushSignal(lua_State *L, const std::string &name, SbxCapability security);
+
+	template <typename T, typename... Args>
+	void Emit(const std::string &signal, Args... args) {
+		emitter->Emit(T::NAME, signal, args...);
+	}
+
+	template <typename T>
+	static void BindMembers() {
+		ClassDB::BindPropertyReadOnly<T, "ClassName", "Data", &Object::GetClassName, NoneSecurity, ThreadSafety::ReadSafe, false>({ MemberTag::NotReplicated });
+		ClassDB::BindPropertyReadOnly<T, "className", "Data", &Object::GetClassName, NoneSecurity, ThreadSafety::ReadSafe, false>({ MemberTag::Deprecated, MemberTag::NotReplicated });
+		ClassDB::BindMethod<T, "IsA", &Object::IsA, NoneSecurity, ThreadSafety::Safe>({}, "className");
+		ClassDB::BindMethod<T, "isA", &Object::IsA, NoneSecurity, ThreadSafety::Safe>({ MemberTag::Deprecated }, "className");
+	}
+
+private:
+	std::shared_ptr<SignalEmitter> emitter;
+};
+
+} //namespace SBX::Classes

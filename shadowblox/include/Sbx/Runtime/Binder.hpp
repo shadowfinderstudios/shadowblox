@@ -136,6 +136,22 @@ inline T luaSBX_checkarg(lua_State *L, int index) {
 	}
 }
 
+template <typename T>
+inline void luaSBX_pushret(lua_State *L, T value) {
+	if constexpr (DataTypes::EnumClassToEnum<T>::enumType) {
+		constexpr DataTypes::Enum *E = DataTypes::EnumClassToEnum<T>::enumType;
+		int val = static_cast<int>(value);
+		if (auto item = E->FromValue(val)) {
+			LuauStackOp<DataTypes::EnumItem *>::Push(L, *item);
+		} else {
+			// Should be unreachable
+			luaL_error(L, "enum value from C++ does not correspond to any Luau object");
+		}
+	} else {
+		LuauStackOp<T>::Push(L, value);
+	}
+}
+
 // https://stackoverflow.com/a/48458312
 template <typename>
 struct IsTuple : std::false_type {};
@@ -144,7 +160,7 @@ template <typename... T>
 struct IsTuple<std::tuple<T...>> : std::true_type {
 	template <size_t... N>
 	static int Push(lua_State *L, const std::tuple<T...> &val, std::index_sequence<N...> /*unused*/) {
-		(LuauStackOp<T>::Push(L, std::get<N>(val)), ...);
+		(luaSBX_pushret(L, std::get<N>(val)), ...);
 		return sizeof...(T);
 	}
 
@@ -157,18 +173,8 @@ template <typename T>
 inline int luaSBX_pushres(lua_State *L, T value) {
 	if constexpr (IsTuple<T>::value) {
 		return IsTuple<T>::Push(L, value);
-	} else if constexpr (DataTypes::EnumClassToEnum<T>::enumType) {
-		constexpr DataTypes::Enum *E = DataTypes::EnumClassToEnum<T>::enumType;
-		int val = static_cast<int>(value);
-		if (auto item = E->FromValue(val)) {
-			LuauStackOp<DataTypes::EnumItem *>::Push(L, *item);
-			return 1;
-		}
-
-		// Should be unreachable
-		luaL_error(L, "enum value from C++ does not correspond to any Luau object");
 	} else {
-		LuauStackOp<T>::Push(L, value);
+		luaSBX_pushret(L, value);
 		return 1;
 	}
 }

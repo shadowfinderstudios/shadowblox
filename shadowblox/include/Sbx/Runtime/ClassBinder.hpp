@@ -49,6 +49,7 @@ class LuauClassBinder {
 public:
 	using TypePredicate = bool (*)(lua_State *L, int index);
 	using IndexOverride = int (*)(lua_State *L, const char *name);
+	using NewindexOverride = bool (*)(lua_State *L, const char *name);
 
 	/**
 	 * @brief Initialize the class binder.
@@ -306,17 +307,31 @@ public:
 	}
 
 	/**
-	 * @brief Set an `__index` override for this class.
+	 * @brief Add an `__index` override for this class.
 	 *
 	 * The supplied function should take two parameters, the Luau state and the
 	 * requested property, and return the number of resulting items pushed onto
 	 * the stack. If the number of items is zero, the function results will
-	 * be ignored.
+	 * be ignored. The callbacks are evaluated in the order they are added in.
 	 *
 	 * @param func The function.
 	 */
-	static void SetIndexOverride(IndexOverride func) {
-		indexOverride = func;
+	static void AddIndexOverride(IndexOverride func) {
+		indexOverrides.push_back(func);
+	}
+
+	/**
+	 * @brief Add a `__newindex` override for this class.
+	 *
+	 * The supplied function should take two parameters, the Luau state and the
+	 * requested property, and return `true` if the set operation completed or
+	 * `false` if the function call should be ignored. The callbacks are
+	 * evaluated in the order they are added in.
+	 *
+	 * @param func The function.
+	 */
+	static void AddNewindexOverride(NewindexOverride func) {
+		newindexOverrides.push_back(func);
 	}
 
 	/**
@@ -390,7 +405,8 @@ private:
 
 	static lua_CFunction tostringFunc;
 	static lua_CFunction callOperator;
-	static IndexOverride indexOverride;
+	static std::vector<IndexOverride> indexOverrides;
+	static std::vector<NewindexOverride> newindexOverrides;
 
 	// For binary operators: Wrapper functions that call into binaryOperators
 	// (only one per operator)
@@ -415,8 +431,8 @@ private:
 	static int Index(lua_State *L) {
 		const char *propName = luaL_checkstring(L, 2);
 
-		if (indexOverride) {
-			if (int nret = indexOverride(L, propName)) {
+		for (IndexOverride func : indexOverrides) {
+			if (int nret = func(L, propName)) {
 				return nret;
 			}
 		}
@@ -442,6 +458,12 @@ private:
 
 	static int Newindex(lua_State *L) {
 		const char *propName = luaL_checkstring(L, 2);
+
+		for (NewindexOverride func : newindexOverrides) {
+			if (func(L, propName)) {
+				return 0;
+			}
+		}
 
 		auto it = properties.find(propName);
 		if (it != properties.end()) {
@@ -503,7 +525,10 @@ template <typename T>
 lua_CFunction LuauClassBinder<T>::callOperator = nullptr;
 
 template <typename T>
-LuauClassBinder<T>::IndexOverride LuauClassBinder<T>::indexOverride = nullptr;
+std::vector<typename LuauClassBinder<T>::IndexOverride> LuauClassBinder<T>::indexOverrides;
+
+template <typename T>
+std::vector<typename LuauClassBinder<T>::NewindexOverride> LuauClassBinder<T>::newindexOverrides;
 
 template <typename T>
 std::unordered_map<TMS, lua_CFunction> LuauClassBinder<T>::operatorFunctions;

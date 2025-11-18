@@ -110,33 +110,33 @@ TEST_CASE("registry") {
 	lua_State *L = luaSBX_newstate(CoreVM, ElevatedGameScriptIdentity);
 	REQUIRE_NE(L, nullptr);
 
-	auto push = [](lua_State *L, void *ptr) {
+	auto push = [](lua_State *L, void *ptr, void *userdata) {
 		lua_newuserdata(L, 1);
 	};
 
 	SUBCASE("strong") {
-		CHECK(luaSBX_pushregistry(L, nullptr, push, false));
-		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, false));
+		CHECK(luaSBX_pushregistry(L, nullptr, nullptr, push, false));
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, nullptr, push, false));
 		CHECK_EQ(lua_gettop(L), 2);
 
 		CHECK(lua_equal(L, -2, -1));
 		lua_pop(L, 2);
 		lua_gc(L, LUA_GCCOLLECT, 0);
 
-		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, false));
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, nullptr, push, false));
 		lua_pop(L, 1);
 	}
 
 	SUBCASE("weak") {
-		CHECK(luaSBX_pushregistry(L, nullptr, push, true));
-		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, push, true));
+		CHECK(luaSBX_pushregistry(L, nullptr, nullptr, push, true));
+		CHECK_FALSE(luaSBX_pushregistry(L, nullptr, nullptr, push, true));
 		CHECK_EQ(lua_gettop(L), 2);
 
 		CHECK(lua_equal(L, -2, -1));
 		lua_pop(L, 2);
 		lua_gc(L, LUA_GCCOLLECT, 0);
 
-		CHECK(luaSBX_pushregistry(L, nullptr, push, false));
+		CHECK(luaSBX_pushregistry(L, nullptr, nullptr, push, false));
 		lua_pop(L, 1);
 	}
 

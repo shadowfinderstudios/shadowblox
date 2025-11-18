@@ -23,6 +23,7 @@ AlwaysBuild(rbx_api)
 sources = Glob("src/*.cpp")
 sources += Glob("src/Runtime/*.cpp")
 sources += Glob("src/DataTypes/*.cpp")
+sources += Glob("src/Classes/*.cpp")
 
 includes = ["#shadowblox/include/"]
 

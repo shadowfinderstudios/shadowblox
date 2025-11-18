@@ -142,7 +142,7 @@ int32_t identityToCapabilities(SbxIdentity identity);
 bool luaSBX_iscapability(lua_State *L, SbxCapability capability);
 void luaSBX_checkcapability(lua_State *L, SbxCapability capability, const char *action, const char *target);
 
-bool luaSBX_pushregistry(lua_State *L, void *ptr, void (*push)(lua_State *L, void *ptr), bool weak);
+bool luaSBX_pushregistry(lua_State *L, void *ptr, void *userdata, void (*push)(lua_State *L, void *ptr, void *userdata), bool weak);
 
 void luaSBX_debugcallbacks(lua_State *L);
 void luaSBX_cbinterrupt(lua_State *L, int gc);

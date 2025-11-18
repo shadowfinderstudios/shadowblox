@@ -392,27 +392,27 @@ struct LuauStackOp<const char *> {
 
 /* STATIC REGREF: Use for ~static objects with strong/weak cache in Luau */
 
-#define STACK_OP_REGISTRY_PTR_DEF(type)                 \
-	template <>                                         \
-	struct LuauStackOp<type *> {                        \
-		static const std::string NAME;                  \
-                                                        \
-		static void PushRaw(lua_State *L, void *value); \
-		static void Push(lua_State *L, type *value);    \
-                                                        \
-		static type *Get(lua_State *L, int index);      \
-		static bool Is(lua_State *L, int index);        \
-		static type *Check(lua_State *L, int index);    \
+#define STACK_OP_REGISTRY_PTR_DEF(type)                                 \
+	template <>                                                         \
+	struct LuauStackOp<type *> {                                        \
+		static const std::string NAME;                                  \
+                                                                        \
+		static void PushRaw(lua_State *L, void *value, void *userdata); \
+		static void Push(lua_State *L, type *value);                    \
+                                                                        \
+		static type *Get(lua_State *L, int index);                      \
+		static bool Is(lua_State *L, int index);                        \
+		static type *Check(lua_State *L, int index);                    \
 	};
 
 #define REGISTRY_PTR_STACK_OP_IMPL(type, name, metatable_name, tag, weak)                                     \
-	void LuauStackOp<type *>::PushRaw(lua_State *L, void *value) {                                            \
+	void LuauStackOp<type *>::PushRaw(lua_State *L, void *value, void * /* unused */) {                       \
 		type **udata = reinterpret_cast<type **>(lua_newuserdatataggedwithmetatable(L, sizeof(void *), tag)); \
 		*udata = (type *)value;                                                                               \
 	}                                                                                                         \
                                                                                                               \
 	void LuauStackOp<type *>::Push(lua_State *L, type *value) {                                               \
-		luaSBX_pushregistry(L, value, PushRaw, weak);                                                         \
+		luaSBX_pushregistry(L, value, nullptr, PushRaw, weak);                                                \
 	}                                                                                                         \
                                                                                                               \
 	type *LuauStackOp<type *>::Get(lua_State *L, int index) {                                                 \

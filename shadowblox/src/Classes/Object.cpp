@@ -22,62 +22,31 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  ******************************************************************************/
 
-#include "Sbx/DataTypes/Enums.hpp"
+#include "Sbx/Classes/Object.hpp"
 
-#include <vector>
+#include <memory>
 
 #include "lua.h"
-#include "lualib.h" // NOLINT
 
-#include "Sbx/DataTypes/Enum.hpp"
+#include "Sbx/Classes/ClassDB.hpp"
+#include "Sbx/DataTypes/RBXScriptSignal.hpp"
 #include "Sbx/Runtime/Base.hpp"
-#include "Sbx/Runtime/ClassBinder.hpp"
-#include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/SignalEmitter.hpp"
 
-namespace SBX::DataTypes {
+namespace SBX::Classes {
 
-void Enums::Register(lua_State *L) {
-	using B = LuauClassBinder<Enums>;
-
-	if (!B::IsInitialized()) {
-		B::Init("Enums", "Enums", EnumsUdata);
-		B::AddIndexOverride(IndexOverride);
-		B::BindToString<&Enums::ToString>();
-		B::BindMethod<"GetEnums", &Enums::GetEnums, NoneSecurity>();
-	}
-
-	B::InitMetatable(L);
+Object::Object() :
+		emitter(std::make_shared<SignalEmitter>()) {
 }
 
-const char *Enums::ToString() const {
-	return "Enums";
+Object::~Object() {}
+
+bool Object::IsA(const char *className) const {
+	return ClassDB::IsA(GetClassName(), className);
 }
 
-const std::vector<Enum *> &Enums::GetEnums() const {
-	return enums;
+void Object::PushSignal(lua_State *L, const std::string &name, SbxCapability security) {
+	LuauStackOp<DataTypes::RBXScriptSignal>::Push(L, DataTypes::RBXScriptSignal(emitter, name, security));
 }
 
-void Enums::AddEnum(Enum *enumType) {
-	enums.push_back(enumType);
-	nameToEnum[enumType->GetName()] = enumType;
-}
-
-int Enums::IndexOverride(lua_State *L, const char *name) {
-	const Enums *self = LuauStackOp<Enums *>::Check(L, 1);
-	auto it = self->nameToEnum.find(name);
-
-	if (it != self->nameToEnum.end()) {
-		LuauStackOp<Enum *>::Push(L, it->second);
-		return 1;
-	}
-
-	return 0;
-}
-
-} //namespace SBX::DataTypes
-
-namespace SBX {
-
-REGISTRY_PTR_STACK_OP_IMPL(DataTypes::Enums, "Enums", "Enums", EnumsUdata, false);
-
-}
+} //namespace SBX::Classes

@@ -48,7 +48,7 @@ void Enum::Register(lua_State *L) {
 
 	if (!B::IsInitialized()) {
 		B::Init("Enum", "Enum", EnumUdata);
-		B::SetIndexOverride(IndexOverride);
+		B::AddIndexOverride(IndexOverride);
 		B::BindToString<&Enum::ToString>();
 		B::BindMethod<"GetEnumItems", &Enum::GetEnumItems, NoneSecurity>();
 		B::BindMethod<"FromName", &Enum::FromName, NoneSecurity>();

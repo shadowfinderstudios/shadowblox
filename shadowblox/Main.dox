@@ -10,3 +10,8 @@
  * @namespace SBX::DataTypes
  * @brief Namespace for implementations of Roblox data types.
  */
+
+/**
+ * @namespace SBX::Classes
+ * @brief Namespace for implementations of Roblox Object/Instance classes.
+ */
