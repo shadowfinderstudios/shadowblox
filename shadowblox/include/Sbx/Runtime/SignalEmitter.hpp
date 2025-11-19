@@ -28,6 +28,7 @@
 #include <functional>
 #include <list>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -35,6 +36,7 @@
 
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/StringMap.hpp"
 #include "Sbx/Runtime/TaskScheduler.hpp"
 
 namespace SBX {
@@ -76,12 +78,13 @@ public:
 	int NumConnections() const;
 
 	template <typename... Args>
-	void Emit(const char *className, const std::string &signal, Args... args) {
+	void Emit(std::string_view className, std::string_view signal, Args... args) {
 		std::vector<uint64_t> toRemove;
 
-		if (deferred) {
+		auto entry = connections.find(signal);
+		if (entry != connections.end() && deferred) {
 			// Do not fire new connections during iteration
-			auto connectionsCopy = connections[signal];
+			auto connectionsCopy = entry->second;
 			for (const auto &[id, conn] : connectionsCopy) {
 				SbxThreadData *udata = luaSBX_getthreaddata(conn.L);
 				if (!udata->global->scheduler) {
@@ -104,7 +107,7 @@ public:
 				if (created) {
 					lua_pop(conn.L, 1); // function
 				} else {
-					std::string debugName = std::string(className) + '.' + signal;
+					std::string debugName = std::string(className) + '.' + std::string(signal);
 					luaSBX_reentrancyerror(conn.L, debugName.c_str());
 				}
 
@@ -112,12 +115,12 @@ public:
 					toRemove.push_back(id);
 				}
 			}
-		} else {
+		} else if (entry != connections.end()) {
 			// Do not fire new connections during iteration
-			auto connectionsCopy = connections[signal];
+			auto connectionsCopy = entry->second;
 			for (const auto &[id, conn] : connectionsCopy) {
 				// Deleted during iteration
-				if (!connections[signal].contains(id)) {
+				if (!entry->second.contains(id)) {
 					continue;
 				}
 
@@ -126,7 +129,7 @@ public:
 				bool firstEntrant = immediateReentrancy.empty();
 
 				if (++immediateReentrancy[id] > IMMEDIATE_EVENT_REENTRANCY_LIMIT) {
-					std::string debugName = std::string(className) + '.' + signal;
+					std::string debugName = std::string(className) + '.' + std::string(signal);
 					luaSBX_reentrancyerror(conn.L, debugName.c_str());
 				} else {
 					(LuauStackOp<Args>::Push(conn.L, args), ...);
@@ -145,7 +148,7 @@ public:
 		}
 
 		for (uint64_t id : toRemove) {
-			Disconnect(signal, id, false);
+			Disconnect(std::string(signal), id, false);
 		}
 
 		auto tasks = pendingTasks.find(signal);
@@ -171,8 +174,8 @@ private:
 	bool deferred = false;
 	uint64_t nextId = 0;
 	std::unordered_map<uint64_t, int> immediateReentrancy;
-	std::unordered_map<std::string, std::unordered_map<uint64_t, Connection>> connections;
-	std::unordered_map<std::string, std::list<SignalWaitTask *>> pendingTasks;
+	StringMap<std::unordered_map<uint64_t, Connection>> connections;
+	StringMap<std::list<SignalWaitTask *>> pendingTasks;
 };
 
 class SignalConnectionOwner {

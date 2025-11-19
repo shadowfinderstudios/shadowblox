@@ -24,13 +24,12 @@
 
 #pragma once
 
-#include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "lua.h"
 
 #include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/StringMap.hpp"
 
 namespace SBX::DataTypes {
 
@@ -56,7 +55,7 @@ private:
 	static int IndexOverride(lua_State *L, const char *name);
 
 	std::vector<Enum *> enums;
-	std::unordered_map<std::string, Enum *> nameToEnum;
+	StringMap<Enum *> nameToEnum;
 };
 
 } //namespace SBX::DataTypes

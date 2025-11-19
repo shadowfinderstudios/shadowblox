@@ -37,6 +37,7 @@
 // clang-format on
 /* BEGIN USER CODE PreNamespace */
 #include <memory>
+#include <string>
 
 #include "lua.h"
 
@@ -67,8 +68,8 @@ bool Object::IsA(const char *className) const {
 
 // clang-format on
 /* BEGIN USER CODE PostClass */
-void Object::PushSignal(lua_State *L, const std::string &name, SbxCapability security) {
-	LuauStackOp<DataTypes::RBXScriptSignal>::Push(L, DataTypes::RBXScriptSignal(emitter, name, security));
+void Object::PushSignal(lua_State *L, std::string_view name, SbxCapability security) {
+	LuauStackOp<DataTypes::RBXScriptSignal>::Push(L, DataTypes::RBXScriptSignal(emitter, std::string(name), security));
 }
 /* END USER CODE PostClass */
 // clang-format off

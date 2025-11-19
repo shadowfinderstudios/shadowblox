@@ -25,16 +25,17 @@
 #include "Sbx/Classes/ClassDB.hpp"
 
 #include <memory>
-#include <string>
-#include <unordered_map>
+#include <string_view>
 #include <vector>
 
 #include "lua.h"
 
+#include "Sbx/Runtime/StringMap.hpp"
+
 namespace SBX::Classes {
 
-std::unordered_map<std::string, ClassDB::ClassInfo> ClassDB::classes;
-std::unordered_map<std::string, std::shared_ptr<Object> (*)()> ClassDB::constructors;
+StringMap<ClassDB::ClassInfo> ClassDB::classes;
+StringMap<std::shared_ptr<Object> (*)()> ClassDB::constructors;
 std::vector<void (*)(lua_State *)> ClassDB::registerCallbacks;
 
 void ClassDB::Register(lua_State *L) {
@@ -43,7 +44,7 @@ void ClassDB::Register(lua_State *L) {
 	}
 }
 
-const ClassDB::ClassInfo *ClassDB::GetClass(const std::string &className) {
+const ClassDB::ClassInfo *ClassDB::GetClass(std::string_view className) {
 	auto c = classes.find(className);
 	if (c == classes.end()) {
 		return nullptr;
@@ -52,7 +53,7 @@ const ClassDB::ClassInfo *ClassDB::GetClass(const std::string &className) {
 	return &c->second;
 }
 
-const ClassDB::Function *ClassDB::GetFunction(const std::string &className, const std::string &funcName) {
+const ClassDB::Function *ClassDB::GetFunction(std::string_view className, std::string_view funcName) {
 	auto c = classes.find(className);
 	if (c == classes.end()) {
 		return nullptr;
@@ -66,7 +67,7 @@ const ClassDB::Function *ClassDB::GetFunction(const std::string &className, cons
 	return &f->second;
 }
 
-const ClassDB::Property *ClassDB::GetProperty(const std::string &className, const std::string &propName) {
+const ClassDB::Property *ClassDB::GetProperty(std::string_view className, std::string_view propName) {
 	auto c = classes.find(className);
 	if (c == classes.end()) {
 		return nullptr;
@@ -80,7 +81,7 @@ const ClassDB::Property *ClassDB::GetProperty(const std::string &className, cons
 	return &p->second;
 }
 
-const ClassDB::Signal *ClassDB::GetSignal(const std::string &className, const std::string &sigName) {
+const ClassDB::Signal *ClassDB::GetSignal(std::string_view className, std::string_view sigName) {
 	auto c = classes.find(className);
 	if (c == classes.end()) {
 		return nullptr;
@@ -94,7 +95,7 @@ const ClassDB::Signal *ClassDB::GetSignal(const std::string &className, const st
 	return &s->second;
 }
 
-const ClassDB::Callback *ClassDB::GetCallback(const std::string &className, const std::string &cbName) {
+const ClassDB::Callback *ClassDB::GetCallback(std::string_view className, std::string_view cbName) {
 	auto c = classes.find(className);
 	if (c == classes.end()) {
 		return nullptr;
@@ -108,23 +109,23 @@ const ClassDB::Callback *ClassDB::GetCallback(const std::string &className, cons
 	return &cb->second;
 }
 
-std::shared_ptr<Object> ClassDB::New(const std::string &className) {
+std::shared_ptr<Object> ClassDB::New(std::string_view className) {
 	auto ctor = constructors.find(className);
 	return ctor != constructors.end() ? ctor->second() : nullptr;
 }
 
-bool ClassDB::IsA(const std::string &derived, const std::string &base) {
+bool ClassDB::IsA(std::string_view derived, std::string_view base) {
 	if (!classes.contains(base)) {
 		return false;
 	}
 
-	const std::string *curr = &derived;
-	while (!curr->empty()) {
-		if (*curr == base) {
+	std::string_view curr = derived;
+	while (!curr.empty()) {
+		if (curr == base) {
 			return true;
 		}
 
-		curr = &classes[*curr].parent;
+		curr = classes.find(curr)->second.parent;
 	}
 
 	return false;

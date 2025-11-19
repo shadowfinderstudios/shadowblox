@@ -29,9 +29,9 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -45,6 +45,7 @@
 #include "Sbx/Runtime/Binder.hpp"
 #include "Sbx/Runtime/ClassBinder.hpp"
 #include "Sbx/Runtime/Stack.hpp"
+#include "Sbx/Runtime/StringMap.hpp"
 
 namespace SBX::Classes {
 
@@ -176,10 +177,10 @@ public:
 		MemoryCategory category;
 		std::unordered_set<ClassTag> tags;
 
-		std::unordered_map<std::string, Function> functions;
-		std::unordered_map<std::string, Property> properties;
-		std::unordered_map<std::string, Signal> signals;
-		std::unordered_map<std::string, Callback> callbacks;
+		StringMap<Function> functions;
+		StringMap<Property> properties;
+		StringMap<Signal> signals;
+		StringMap<Callback> callbacks;
 	};
 
 	template <typename Sig>
@@ -313,14 +314,14 @@ public:
 		classes[T::NAME].callbacks[name.value] = std::move(cb);
 	}
 
-	static const ClassInfo *GetClass(const std::string &className);
-	static const Function *GetFunction(const std::string &className, const std::string &funcName);
-	static const Property *GetProperty(const std::string &className, const std::string &propName);
-	static const Signal *GetSignal(const std::string &className, const std::string &sigName);
-	static const Callback *GetCallback(const std::string &className, const std::string &cbName);
+	static const ClassInfo *GetClass(std::string_view className);
+	static const Function *GetFunction(std::string_view className, std::string_view funcName);
+	static const Property *GetProperty(std::string_view className, std::string_view propName);
+	static const Signal *GetSignal(std::string_view className, std::string_view sigName);
+	static const Callback *GetCallback(std::string_view className, std::string_view cbName);
 
-	static std::shared_ptr<Object> New(const std::string &className);
-	static bool IsA(const std::string &derived, const std::string &base);
+	static std::shared_ptr<Object> New(std::string_view className);
+	static bool IsA(std::string_view derived, std::string_view base);
 
 	static void Register(lua_State *L);
 
@@ -381,7 +382,7 @@ private:
 	}
 
 	template <typename Sig, typename... Args>
-	static Signal CreateSignal(const std::string &name, SbxCapability capability, std::unordered_set<MemberTag> tags, bool unlisted, Args... paramNames) {
+	static Signal CreateSignal(std::string_view name, SbxCapability capability, std::unordered_set<MemberTag> tags, bool unlisted, Args... paramNames) {
 		Signal signal;
 		signal.name = name;
 		signal.parameters = FuncUtils<Sig>::GetParams(paramNames...);
@@ -392,8 +393,8 @@ private:
 		return signal;
 	}
 
-	static std::unordered_map<std::string, ClassInfo> classes;
-	static std::unordered_map<std::string, std::shared_ptr<Object> (*)()> constructors;
+	static StringMap<ClassInfo> classes;
+	static StringMap<std::shared_ptr<Object> (*)()> constructors;
 	static std::vector<void (*)(lua_State *)> registerCallbacks;
 };
 

@@ -35,6 +35,7 @@
 
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/Binder.hpp"
+#include "Sbx/Runtime/StringMap.hpp"
 
 namespace SBX {
 
@@ -399,9 +400,9 @@ private:
 		TypePredicate rhsPredicate;
 	};
 
-	static std::unordered_map<std::string, Method> staticMethods;
-	static std::unordered_map<std::string, Method> methods;
-	static std::unordered_map<std::string, Property> properties;
+	static StringMap<Method> staticMethods;
+	static StringMap<Method> methods;
+	static StringMap<Property> properties;
 
 	static lua_CFunction tostringFunc;
 	static lua_CFunction callOperator;
@@ -510,13 +511,13 @@ template <typename T>
 int LuauClassBinder<T>::udataTag = -1;
 
 template <typename T>
-std::unordered_map<std::string, typename LuauClassBinder<T>::Method> LuauClassBinder<T>::staticMethods;
+StringMap<typename LuauClassBinder<T>::Method> LuauClassBinder<T>::staticMethods;
 
 template <typename T>
-std::unordered_map<std::string, typename LuauClassBinder<T>::Method> LuauClassBinder<T>::methods;
+StringMap<typename LuauClassBinder<T>::Method> LuauClassBinder<T>::methods;
 
 template <typename T>
-std::unordered_map<std::string, typename LuauClassBinder<T>::Property> LuauClassBinder<T>::properties;
+StringMap<typename LuauClassBinder<T>::Property> LuauClassBinder<T>::properties;
 
 template <typename T>
 lua_CFunction LuauClassBinder<T>::tostringFunc = nullptr;

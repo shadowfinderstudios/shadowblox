@@ -43,6 +43,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <type_traits>
 
 #include "lua.h"
@@ -202,7 +203,7 @@ public:
 	~Object() override = default;
 
 	template <typename T>
-	std::optional<T> Get(const std::string &property) {
+	std::optional<T> Get(std::string_view property) {
 		if (const ClassDB::Property *prop = ClassDB::GetProperty(GetClassName(), property)) {
 			std::any val = prop->getter(this);
 			if (val.type() == typeid(T)) {
@@ -214,7 +215,7 @@ public:
 	}
 
 	template <typename T>
-	bool Set(const std::string &property, const std::decay_t<T> &value) {
+	bool Set(std::string_view property, const std::decay_t<T> &value) {
 		if (const ClassDB::Property *prop = ClassDB::GetProperty(GetClassName(), property)) {
 			return prop->setter(this, value);
 		}
@@ -225,10 +226,10 @@ public:
 protected:
 	Object();
 
-	void PushSignal(lua_State *L, const std::string &name, SbxCapability security);
+	void PushSignal(lua_State *L, std::string_view name, SbxCapability security);
 
 	template <typename T, typename... Args>
-	void Emit(const std::string &signal, Args... args) {
+	void Emit(std::string_view signal, Args... args) {
 		emitter->Emit(T::NAME, signal, args...);
 	}
 

@@ -24,55 +24,31 @@
 
 #pragma once
 
-#include <optional>
+#include <cstddef>
+#include <functional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
-#include <vector>
-
-#include "Sbx/Runtime/StringMap.hpp"
-#include "lua.h"
-
-#include "Sbx/Runtime/Stack.hpp"
-
-namespace SBX::DataTypes {
-
-class EnumItem;
-class Enums;
-
-/**
- * @brief This class implements Roblox's [`Enum`](https://create.roblox.com/docs/en-us/reference/engine/datatypes/Enum)
- * data type.
- */
-class Enum {
-public:
-	Enum(const char *name, Enums *enums);
-
-	static void Register(lua_State *L);
-
-	const char *ToString() const;
-
-	const char *GetName() const;
-
-	const std::vector<EnumItem *> &GetEnumItems() const;
-	std::optional<EnumItem *> FromName(const char *name);
-	std::optional<EnumItem *> FromValue(int value);
-
-protected:
-	friend class EnumItem;
-	void AddItem(EnumItem *item);
-
-private:
-	static int IndexOverride(lua_State *L, const char *name);
-
-	const char *name;
-	std::vector<EnumItem *> items;
-	StringMap<EnumItem *> nameToItem;
-	std::unordered_map<int, EnumItem *> valueToItem;
-};
-
-} //namespace SBX::DataTypes
 
 namespace SBX {
 
-STACK_OP_REGISTRY_PTR_DEF(DataTypes::Enum);
+// Eliminate allocations when performing queries on hashmaps
+// https://www.cppstories.com/2021/heterogeneous-access-cpp20
 
-}
+struct StringHash {
+	using is_transparent = void;
+	[[nodiscard]] size_t operator()(const char *txt) const {
+		return std::hash<std::string_view>{}(txt);
+	}
+	[[nodiscard]] size_t operator()(std::string_view txt) const {
+		return std::hash<std::string_view>{}(txt);
+	}
+	[[nodiscard]] size_t operator()(const std::string &txt) const {
+		return std::hash<std::string>{}(txt);
+	}
+};
+
+template <typename T>
+using StringMap = std::unordered_map<std::string, T, StringHash, std::equal_to<>>;
+
+} //namespace SBX
