@@ -78,7 +78,7 @@ def parse_source(contents: str):
 
 
 def generate_includes(includes: set[str]):
-    return "\n".join(["#include " + h + " // NOLINT" for h in includes])
+    return "\n".join(["#include " + h + " // NOLINT" for h in sorted(includes)])
 
 
 def should_skip_space(type: str):
@@ -419,45 +419,40 @@ def generate(
     header_includes = header_includes.union(member_hpp_includes)
     source_includes = source_includes.union(member_cpp_includes)
 
-    properties = sorted(
-        [m for m in gen_members if m["type"] == "Property"], key=lambda m: m["name"]
-    )
-    functions = sorted(
-        [m for m in gen_members if m["type"] == "Function"], key=lambda m: m["name"]
-    )
-    signals = sorted(
-        [m for m in gen_members if m["type"] == "Event"], key=lambda m: m["name"]
-    )
-    callbacks = sorted(
-        [m for m in gen_members if m["type"] == "Callback"], key=lambda m: m["name"]
-    )
-
     bind_str = ""
     decl_str = ""
     impl_str = ""
 
-    def add_section(section: list[dict]):
+    def add_section(type: str):
         nonlocal bind_str
         nonlocal decl_str
         nonlocal impl_str
+
+        section = sorted(
+            [m for m in gen_members if m["type"] == type], key=lambda m: m["name"]
+        )
+
         if len(section) == 0:
             return
 
         bind_str += "\n".join(["\t\t" + m["bind"] for m in section])
         bind_str += "\n\n"
 
-        for m in section:
-            if "decl" in m:
-                decl_str += "\t" + m["decl"]
-                decl_str += "\n\n"
-            if "impl" in m:
-                impl_str += m["impl"]
-                impl_str += "\n\n"
+        decls = [m["decl"] for m in section if "decl" in m]
+        impls = [m["impl"] for m in section if "impl" in m]
 
-    add_section(properties)
-    add_section(functions)
-    add_section(signals)
-    add_section(callbacks)
+        if len(decls) > 0:
+            decl_str += "\n".join(["\t" + d for d in decls])
+            decl_str += "\n\n"
+
+        if len(impls) > 0:
+            impl_str += "\n\n".join(impls)
+            impl_str += "\n\n"
+
+    add_section("Property")
+    add_section("Function")
+    add_section("Event")
+    add_section("Callback")
 
     # Header generation
     header = f"""{constants.header_cpp}{header_sbxcg}

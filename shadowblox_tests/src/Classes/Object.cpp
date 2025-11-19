@@ -90,7 +90,10 @@ public:
 	}
 
 	const char *GetStr() const { return str.c_str(); }
-	void SetStr(const char *newStr) { str = newStr; }
+	void SetStr(const char *newStr) {
+		str = newStr;
+		Changed<TestDerived>("Str");
+	}
 
 	int GetNum() const { return str.size(); }
 
@@ -117,7 +120,7 @@ protected:
 
 		ClassDB::BindMethod<T, "TestMethod", &TestDerived::TestMethod, InternalTestSecurity, ThreadSafety::Unsafe>({}, "arg1", "arg2");
 		ClassDB::BindLuauMethod<T, "TestLuauMethod", std::tuple<std::string, int>(int, std::optional<int>), TestDerived::TestLuauMethod, NoneSecurity, ThreadSafety::Safe>({}, "arg1", "arg2");
-		ClassDB::BindProperty<T, "Str", "Test Category", &TestDerived::GetStr, NoneSecurity, &TestDerived::SetStr, NoneSecurity, ThreadSafety::Unsafe, true, true>({ MemberTag::NotBrowsable });
+		ClassDB::BindProperty<T, "Str", "Test Category", &TestDerived::GetStr, InternalTestSecurity, &TestDerived::SetStr, InternalTestSecurity, ThreadSafety::Unsafe, true, true>({ MemberTag::NotBrowsable });
 		ClassDB::BindPropertyReadOnly<T, "Num", "Test Category", &TestDerived::GetNum, InternalTestSecurity, ThreadSafety::Unsafe, false>({ MemberTag::NotBrowsable });
 		ClassDB::BindPropertyNotScriptable<T, "Axis", "Test Category", &TestDerived::GetAxis, &TestDerived::SetAxis, ThreadSafety::Unsafe, true, true>({});
 		ClassDB::BindPropertyNotScriptableReadOnly<T, "Behavior", "Test Category", &TestDerived::GetBehavior, ThreadSafety::ReadSafe, true>({});
@@ -202,8 +205,8 @@ TEST_CASE("runtime type information") {
 		CHECK_NE(prop->setter, nullptr);
 		CHECK_EQ(prop->type, "string");
 		CHECK_EQ(prop->tags, std::unordered_set<MemberTag>{ MemberTag::NotBrowsable });
-		CHECK_EQ(prop->readSecurity, NoneSecurity);
-		CHECK_EQ(prop->writeSecurity, NoneSecurity);
+		CHECK_EQ(prop->readSecurity, InternalTestSecurity);
+		CHECK_EQ(prop->writeSecurity, InternalTestSecurity);
 		CHECK_EQ(prop->safety, ThreadSafety::Unsafe);
 		CHECK(prop->canLoad);
 		CHECK(prop->canSave);
@@ -216,7 +219,7 @@ TEST_CASE("runtime type information") {
 		CHECK_EQ(sig->name, "StrChanged");
 		CHECK(sig->parameters.empty());
 		CHECK(sig->tags.empty());
-		CHECK_EQ(sig->security, NoneSecurity);
+		CHECK_EQ(sig->security, InternalTestSecurity);
 		CHECK(sig->unlisted);
 	}
 
@@ -413,6 +416,46 @@ TEST_CASE("Luau API") {
 		CHECK_EVAL_FAIL(L, "inst.Behavior = 0", "exec:1: Behavior is not a valid member of TestDerived");
 	}
 
+	SUBCASE("property signals") {
+		SUBCASE("working") {
+			CHECK_EVAL_OK(L, R"ASDF(
+				changedHits = 0
+				propHits = 0
+
+				inst.Changed:Connect(function(prop)
+					if prop == "Str" then changedHits += 1 end
+				end)
+
+				inst:GetPropertyChangedSignal("Str"):Connect(function()
+					propHits += 1
+				end)
+			)ASDF");
+
+			testDerived->SetStr("ishdgiahsdg");
+
+			lua_getglobal(L, "changedHits");
+			CHECK_EQ(lua_tonumber(L, -1), 1);
+			lua_pop(L, 1);
+
+			lua_getglobal(L, "propHits");
+			CHECK_EQ(lua_tonumber(L, -1), 1);
+			lua_pop(L, 1);
+		}
+
+		SUBCASE("non-existent") {
+			CHECK_EVAL_FAIL(L, "inst:GetPropertyChangedSignal('oashdgoiahdsoighaoidsf')", "exec:1: oashdgoiahdsoighaoidsf is not a valid property name.");
+		}
+
+		SUBCASE("not scriptable") {
+			CHECK_EVAL_FAIL(L, "inst:GetPropertyChangedSignal('Behavior')", "exec:1: Behavior is not a valid property name.");
+		}
+
+		SUBCASE("no permission") {
+			udata->identity = GameScriptIdentity;
+			CHECK_EVAL_FAIL(L, "inst:GetPropertyChangedSignal('Str')", "exec:1: The current thread cannot read 'Str' (lacking capability InternalTest)");
+		}
+	}
+
 	SUBCASE("signal and callback") {
 		CHECK_EVAL_OK(L, R"ASDF(
 			a = nil
@@ -421,12 +464,12 @@ TEST_CASE("Luau API") {
 			d = nil
 
 			inst.TestSignal:Connect(function(arg1, arg2)
-			    a = arg1
+				a = arg1
 				b = arg2
 			end)
 
 			inst.TestCallback = function(arg1, arg2)
-			    c = arg1
+				c = arg1
 				d = arg2
 			end
 		)ASDF");

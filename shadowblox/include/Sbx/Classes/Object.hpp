@@ -29,13 +29,15 @@
  * `python3 -m sbxcg`. See the developer documentation for more details.
  ******************************************************************************/
 
-// SBXCG CLASS HEADER Object {"members": {"ClassName": {}, "className": {"alias": "ClassName"}, "IsA": {"const": true}, "isA": {"alias": "IsA"}}}
+// SBXCG CLASS HEADER Object {"members": {"ClassName": {}, "className": {"alias": "ClassName"}, "IsA": {"const": true}, "isA": {"alias": "IsA"}, "Changed": {}, "GetPropertyChangedSignal": {"custom": true}}}
 // clang-format off
 
 #pragma once
 
-#include "Sbx/Runtime/Base.hpp" // NOLINT
 #include "Sbx/Classes/ClassDB.hpp" // NOLINT
+#include "Sbx/DataTypes/RBXScriptSignal.hpp" // NOLINT
+#include "Sbx/Runtime/Base.hpp" // NOLINT
+#include "lua.h" // NOLINT
 
 // clang-format on
 /* BEGIN USER CODE PreNamespace */
@@ -46,7 +48,6 @@
 #include <string_view>
 #include <type_traits>
 
-#include "lua.h"
 #include "lualib.h"
 
 #include "Sbx/Runtime/SignalEmitter.hpp"
@@ -179,6 +180,7 @@ class Object : public ObjectBase {
 	// clang-format off
 
 public:
+	static int GetPropertyChangedSignal(lua_State *L);
 	bool IsA(const char *className) const;
 
 protected:
@@ -187,8 +189,11 @@ protected:
 		ClassDB::BindPropertyReadOnly<T, "ClassName", "Data", &Object::GetClassName, NoneSecurity, ThreadSafety::ReadSafe, false>({ MemberTag::NotReplicated });
 		ClassDB::BindPropertyReadOnly<T, "className", "Data", &Object::GetClassName, NoneSecurity, ThreadSafety::ReadSafe, false>({ MemberTag::NotReplicated, MemberTag::Deprecated });
 
+		ClassDB::BindLuauMethod<T, "GetPropertyChangedSignal", DataTypes::RBXScriptSignal(const char *), &T::GetPropertyChangedSignal, NoneSecurity, ThreadSafety::Unsafe>({ }, "property");
 		ClassDB::BindMethod<T, "IsA", &Object::IsA, NoneSecurity, ThreadSafety::Safe>({  }, "className");
 		ClassDB::BindMethod<T, "isA", &Object::IsA, NoneSecurity, ThreadSafety::Unsafe>({ MemberTag::Deprecated }, "className");
+
+		ClassDB::BindSignal<T, "Changed", void(const char *), NoneSecurity>({ }, "property");
 
 		// clang-format on
 		/* BEGIN USER CODE BindExtra */
@@ -231,6 +236,23 @@ protected:
 	template <typename T, typename... Args>
 	void Emit(std::string_view signal, Args... args) {
 		emitter->Emit(T::NAME, signal, args...);
+	}
+
+	template <typename T>
+	void Changed(std::string_view propName) {
+		const ClassDB::Property *prop = ClassDB::GetProperty(T::NAME, propName);
+		if (!prop) {
+			return;
+		}
+
+		Emit<T>(prop->changedSignal);
+		Emit<T>("Changed", prop->name);
+	}
+
+	template <typename T, typename... Args>
+	void Changed(std::string_view propName, Args... propNames) {
+		Changed<T>(propName);
+		(Changed<T>(propNames), ...);
 	}
 
 private:

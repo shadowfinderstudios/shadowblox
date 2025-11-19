@@ -33,13 +33,14 @@
 // clang-format off
 
 #include "Sbx/Classes/Object.hpp" // NOLINT
+#include "lua.h" // NOLINT
 
 // clang-format on
 /* BEGIN USER CODE PreNamespace */
 #include <memory>
 #include <string>
 
-#include "lua.h"
+#include "lualib.h"
 
 #include "Sbx/Classes/ClassDB.hpp"
 #include "Sbx/DataTypes/RBXScriptSignal.hpp"
@@ -57,6 +58,24 @@ Object::Object() :
 }
 /* END USER CODE PreClass */
 // clang-format off
+
+int Object::GetPropertyChangedSignal(lua_State *L) {
+	// clang-format on
+	/* BEGIN USER CODE MethodGetPropertyChangedSignal */
+	Object *self = LuauStackOp<Object *>::Check(L, 1);
+	const char *propName = lua_tostring(L, 2);
+
+	const ClassDB::Property *prop = ClassDB::GetProperty(self->GetClassName(), propName);
+	if (!prop || prop->changedSignal.empty()) {
+		luaL_error(L, "%s is not a valid property name.", propName);
+	}
+
+	luaSBX_checkcapability(L, prop->readSecurity, "read", propName);
+	self->PushSignal(L, prop->changedSignal, prop->readSecurity);
+	return 1;
+	/* END USER CODE MethodGetPropertyChangedSignal */
+	// clang-format off
+}
 
 bool Object::IsA(const char *className) const {
 	// clang-format on
