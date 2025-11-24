@@ -44,7 +44,7 @@ aliased to `sbxcg` in the following sections).
 
 ### License headers
 
-Most shadowblox source files have an LGPL license header. To add or update the
+Most shadowblox source files have an MPL license header. To add or update the
 headers across the entire source tree, use `sbxcg licenser`. If this
 tool does not add a header to your source file, then it need not be included.
 
