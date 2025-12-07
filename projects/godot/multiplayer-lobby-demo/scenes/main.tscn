@@ -41,17 +41,27 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -150.0
-offset_top = -100.0
-offset_right = 150.0
-offset_bottom = 100.0
+offset_left = -200.0
+offset_top = -200.0
+offset_right = 200.0
+offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 
 [node name="TitleLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
 layout_mode = 2
-text = "Tag - Multiplayer Demo"
+text = "Tag - Lobby Multiplayer Demo"
 horizontal_alignment = 1
+
+[node name="OnlineIdLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Connecting..."
+horizontal_alignment = 1
+
+[node name="Spacer1" type="Control" parent="UILayer/MainMenu/VBoxContainer"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
 
 [node name="NameLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
 layout_mode = 2
@@ -62,24 +72,47 @@ unique_name_in_owner = true
 layout_mode = 2
 placeholder_text = "Player"
 
-[node name="AddressLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
+[node name="LobbyNameLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
 layout_mode = 2
-text = "Server Address:"
+text = "Lobby Name (for hosting):"
 
-[node name="AddressInput" type="LineEdit" parent="UILayer/MainMenu/VBoxContainer"]
+[node name="LobbyNameInput" type="LineEdit" parent="UILayer/MainMenu/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
-placeholder_text = "127.0.0.1"
+placeholder_text = "My Lobby"
 
-[node name="HostButton" type="Button" parent="UILayer/MainMenu/VBoxContainer"]
+[node name="HostIdLabel" type="Label" parent="UILayer/MainMenu/VBoxContainer"]
+layout_mode = 2
+text = "Host ID (for joining):"
+
+[node name="HostIdInput" type="LineEdit" parent="UILayer/MainMenu/VBoxContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+placeholder_text = "Enter Host Online ID"
+
+[node name="Spacer2" type="Control" parent="UILayer/MainMenu/VBoxContainer"]
+custom_minimum_size = Vector2(0, 10)
+layout_mode = 2
+
+[node name="ButtonContainer" type="HBoxContainer" parent="UILayer/MainMenu/VBoxContainer"]
+layout_mode = 2
+
+[node name="HostButton" type="Button" parent="UILayer/MainMenu/VBoxContainer/ButtonContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
 text = "Host Game"
 
-[node name="JoinButton" type="Button" parent="UILayer/MainMenu/VBoxContainer"]
+[node name="JoinButton" type="Button" parent="UILayer/MainMenu/VBoxContainer/ButtonContainer"]
 unique_name_in_owner = true
 layout_mode = 2
+size_flags_horizontal = 3
 text = "Join Game"
+
+[node name="BrowseButton" type="Button" parent="UILayer/MainMenu/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse Lobbies"
 
 [node name="GameUI" type="Control" parent="UILayer"]
 visible = false
@@ -99,6 +132,21 @@ offset_right = 500.0
 offset_bottom = 50.0
 text = "Waiting..."
 
+[node name="MigrationLabel" type="Label" parent="UILayer/GameUI"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -150.0
+offset_top = 100.0
+offset_right = 150.0
+offset_bottom = 140.0
+grow_horizontal = 2
+text = "Host migration in progress..."
+horizontal_alignment = 1
+
 [node name="PlayerList" type="ItemList" parent="UILayer/GameUI"]
 unique_name_in_owner = true
 layout_mode = 0
@@ -106,3 +154,73 @@ offset_left = 10.0
 offset_top = 60.0
 offset_right = 200.0
 offset_bottom = 200.0
+
+[node name="LeaveButton" type="Button" parent="UILayer/GameUI"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 10.0
+offset_top = 210.0
+offset_right = 200.0
+offset_bottom = 250.0
+text = "Leave Game"
+
+[node name="LobbyListContainer" type="Control" parent="UILayer"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="ColorRect" parent="UILayer/LobbyListContainer"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 0.8)
+
+[node name="Panel" type="Panel" parent="UILayer/LobbyListContainer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -300.0
+offset_top = -200.0
+offset_right = 300.0
+offset_bottom = 200.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="UILayer/LobbyListContainer/Panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="UILayer/LobbyListContainer/Panel/VBoxContainer"]
+layout_mode = 2
+text = "Available Lobbies"
+horizontal_alignment = 1
+
+[node name="LobbyListPlaceholder" type="Control" parent="UILayer/LobbyListContainer/Panel/VBoxContainer"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CloseButton" type="Button" parent="UILayer/LobbyListContainer/Panel/VBoxContainer"]
+layout_mode = 2
+text = "Close"
+
+[connection signal="pressed" from="UILayer/LobbyListContainer/Panel/VBoxContainer/CloseButton" to="." method="_on_close_lobby_list_pressed"]

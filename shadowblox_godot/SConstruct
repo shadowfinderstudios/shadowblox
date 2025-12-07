@@ -106,6 +106,7 @@ Default(library)
 demo_bin_dirs = [
     "../projects/godot/singleplayer-demo/bin/shadowblox/",
     "../projects/godot/multiplayer-demo/bin/shadowblox/",
+    "../projects/godot/multiplayer-lobby-demo/bin/shadowblox/",
 ]
 for demo_bin_dir in demo_bin_dirs:
     install = env.Install(demo_bin_dir, library)
