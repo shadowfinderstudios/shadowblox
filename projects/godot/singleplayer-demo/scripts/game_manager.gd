@@ -1,68 +1,31 @@
 extends Node3D
 ## ShadowBlox Game Manager
 ## Demonstrates the Luau integration with Godot for the escape room demo
+## Falls back to GDScript if the extension isn't available
 
-@onready var sbx_runtime: SbxRuntime = $SbxRuntime
-
-var player_character: SbxPart = null
+var sbx_runtime = null  # Will be SbxRuntime if available
+var sbx_available := false
 
 func _ready() -> void:
-	# Wait for runtime to initialize
-	await get_tree().process_frame
+	# Check if SbxRuntime is available (extension loaded)
+	if ClassDB.class_exists("SbxRuntime"):
+		sbx_available = true
+		sbx_runtime = get_node_or_null("SbxRuntime")
+		if sbx_runtime:
+			print("[GameManager] ShadowBlox extension loaded - using Luau integration")
+			await get_tree().process_frame
+			_setup_luau_game()
+		else:
+			print("[GameManager] SbxRuntime node not found in scene")
+			sbx_available = false
+	else:
+		print("[GameManager] ShadowBlox extension not available for this platform")
+		print("[GameManager] To build for Windows: scons platform=windows target=template_debug")
+		print("[GameManager] Falling back to GDScript implementation")
 
+func _setup_luau_game() -> void:
 	# Create the local player
 	sbx_runtime.create_local_player(1, "Player1")
-
-	# Set up the game using Luau
-	_setup_game_world()
-
-func _setup_game_world() -> void:
-	# Run the key collection script on the key
-	var key_part = $Room1_Key/GoldenKey as SbxPart
-	if key_part:
-		var key_script = """
-local key = script.Parent
-print("Key script loaded for: " .. key.Name)
-
-key.Touched:Connect(function(otherPart)
-	print("Key touched by: " .. tostring(otherPart.Name))
-
-	-- Check if it's the player
-	local player = game.Players:GetPlayerFromCharacter(otherPart.Parent)
-	if player then
-		print("Player collected the key!")
-		key.Transparency = 1
-		key.CanTouch = false
-	end
-end)
-"""
-		var result = sbx_runtime.execute_script(key_script)
-		print("Key script result: ", result)
-
-	# Run the door script
-	var door_trigger = $Room1_Key/Door1/TriggerArea as SbxPart
-	if door_trigger:
-		var door_script = """
-local trigger = script.Parent
-local door = trigger.Parent
-print("Door script loaded")
-
-trigger.Touched:Connect(function(otherPart)
-	print("Door trigger touched")
-	local player = game.Players:GetPlayerFromCharacter(otherPart.Parent)
-	if player then
-		print("Player at door - opening!")
-		-- Move door up to open
-		local doorPart = door:FindFirstChild("DoorPart")
-		if doorPart then
-			doorPart.Position = doorPart.Position + Vector3.new(0, 4, 0)
-			doorPart.CanCollide = false
-		end
-	end
-end)
-"""
-		var result = sbx_runtime.execute_script(door_script)
-		print("Door script result: ", result)
 
 	# Test basic Luau execution
 	_test_luau_basics()
@@ -118,5 +81,17 @@ testPart.Parent = workspace
 print("Created Part: " .. testPart.Name .. " in workspace")
 """)
 	print("Test 5 (Instance.new): ", result5)
+
+	# Test 6: Part.Touched event
+	var result6 = sbx_runtime.execute_script("""
+local testPart = workspace:FindFirstChild("LuauCreatedPart")
+if testPart then
+	testPart.Touched:Connect(function(otherPart)
+		print("LuauCreatedPart touched by: " .. otherPart.Name)
+	end)
+	print("Touched event connected!")
+end
+""")
+	print("Test 6 (Part.Touched): ", result6)
 
 	print("=== Luau Integration Tests Complete ===\n")
