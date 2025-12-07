@@ -37,6 +37,7 @@
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Script.hpp"
 #include "Sbx/Classes/Workspace.hpp"
+#include "Sbx/DataTypes/Color3.hpp"
 #include "Sbx/GodotBridge.hpp"
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/LuauRuntime.hpp"
@@ -111,6 +112,33 @@ void SbxRuntime::initialize_runtime() {
 	godot::UtilityFunctions::print("[SbxRuntime] Luau runtime initialized");
 }
 
+// Luau callback: setPlayerColor(userId, color)
+static int luaSbx_setPlayerColor(lua_State *L) {
+	int64_t userId = static_cast<int64_t>(luaL_checknumber(L, 1));
+	SBX::DataTypes::Color3 *color = SBX::LuauStackOp<SBX::DataTypes::Color3 *>::Get(L, 2);
+	if (!color) {
+		luaL_error(L, "setPlayerColor: expected Color3 as second argument");
+		return 0;
+	}
+
+	SbxRuntime *runtime = SbxRuntime::get_singleton();
+	if (runtime) {
+		runtime->set_player_color(userId, godot::Color(color->R, color->G, color->B));
+	}
+	return 0;
+}
+
+// Luau callback: setStatusText(text)
+static int luaSbx_setStatusText(lua_State *L) {
+	const char *text = luaL_checkstring(L, 1);
+
+	SbxRuntime *runtime = SbxRuntime::get_singleton();
+	if (runtime) {
+		runtime->set_status_text(godot::String(text));
+	}
+	return 0;
+}
+
 void SbxRuntime::setup_data_model() {
 	if (!runtime) return;
 
@@ -120,6 +148,13 @@ void SbxRuntime::setup_data_model() {
 	// Get the VM and register globals
 	lua_State *L = runtime->GetVM(SBX::UserVM);
 	SBX::Bridge::RegisterGlobals(L, dataModel);
+
+	// Register Luau-to-GDScript callback functions
+	lua_pushcfunction(L, luaSbx_setPlayerColor, "setPlayerColor");
+	lua_setglobal(L, "setPlayerColor");
+
+	lua_pushcfunction(L, luaSbx_setStatusText, "setStatusText");
+	lua_setglobal(L, "setStatusText");
 
 	// Start RunService so Heartbeat/Stepped signals fire
 	auto runService = get_run_service();

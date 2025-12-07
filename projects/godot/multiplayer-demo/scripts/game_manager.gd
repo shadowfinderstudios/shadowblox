@@ -134,9 +134,15 @@ func _on_client_disconnected() -> void:
 func _on_player_joined(user_id: int, display_name: String) -> void:
 	print("[GameManager] Player joined: ", display_name, " (ID: ", user_id, ")")
 
-	if NetworkManager.is_server and sbx_runtime and sbx_available:
-		sbx_runtime.create_player(user_id, display_name)
-		sbx_runtime.load_character(user_id)
+	# Create player in Luau (both server and client need this for position sync)
+	if sbx_runtime and sbx_available:
+		if NetworkManager.is_server:
+			sbx_runtime.create_player(user_id, display_name)
+			sbx_runtime.load_character(user_id)
+		else:
+			# Client also needs the player in Luau for position sync to work
+			sbx_runtime.create_player(user_id, display_name)
+			sbx_runtime.load_character(user_id)
 
 	if not player_nodes.has(user_id):
 		var is_local = (user_id == NetworkManager.local_player_id)
@@ -146,6 +152,12 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 
 func _on_existing_player(user_id: int, display_name: String) -> void:
 	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
+
+	# Create existing players in Luau for position sync
+	if sbx_runtime and sbx_available:
+		sbx_runtime.create_player(user_id, display_name)
+		sbx_runtime.load_character(user_id)
+
 	if not player_nodes.has(user_id):
 		_spawn_player_node(user_id, display_name, false)
 	_update_player_list()

@@ -96,6 +96,9 @@ end
 
 -- Update player colors based on tag state
 local function updatePlayerColors()
+	-- Only server should broadcast colors (GDScript syncs via RPC)
+	if not isServer() then return end
+
 	for _, player in ipairs(Players:GetPlayers()) do
 		if player then
 			local userId = player.UserId
@@ -107,33 +110,26 @@ local function updatePlayerColors()
 				color = COLORS.LOCAL
 			end
 
-			-- Call SbxRuntime to update color (emits signal to GDScript)
-			-- Note: This would need to be implemented via a callback mechanism
-			-- For now, we track state and GDScript reads it
+			-- Call SbxRuntime to update color (emits signal to GDScript which syncs via RPC)
+			setPlayerColor(userId, color)
 		end
 	end
 end
 
 -- Update status text
 local function updateStatusText()
-	local playerCount = #Players:GetPlayers()
-	local statusText = ""
+	-- Only server should broadcast status (GDScript syncs via RPC)
+	if not isServer() then return end
 
-	if isServer() then
-		statusText = "Server - " .. playerCount .. " players"
-	else
-		statusText = "Client - " .. playerCount .. " players"
-	end
+	local playerCount = #Players:GetPlayers()
+	local statusText = "Server - " .. playerCount .. " players"
 
 	if GameState.taggedPlayerId > 0 then
-		if Players.LocalPlayer and GameState.taggedPlayerId == Players.LocalPlayer.UserId then
-			statusText = statusText .. " - YOU'RE IT!"
-		else
-			statusText = statusText .. " - Player " .. GameState.taggedPlayerId .. " is IT"
-		end
+		statusText = statusText .. " - Player " .. GameState.taggedPlayerId .. " is IT"
 	end
 
-	-- Would call set_status_text here if we had the callback
+	-- Call SbxRuntime to update status (emits signal to GDScript which syncs via RPC)
+	setStatusText(statusText)
 	print("[TagGame] Status: " .. statusText)
 end
 
