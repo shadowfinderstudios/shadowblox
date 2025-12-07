@@ -47,8 +47,8 @@ __pycache__/
 # Godot 4.x cache directory
 .godot/
 
-# Godot import files
-*.import
+# Godot import dir
+.import/
 
 # Exported projects
 /exports/

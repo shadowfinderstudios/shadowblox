@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://bpqrv2h5y8wjt" path="res://scenes/prefabs/door.tscn" id="3_door"]
 [ext_resource type="PackedScene" uid="uid://c3xyqv6rmjtpw" path="res://scenes/prefabs/key.tscn" id="4_key"]
 [ext_resource type="PackedScene" uid="uid://dgj7v3wxr5kpm" path="res://scenes/prefabs/button.tscn" id="5_button"]
-[ext_resource type="Script" path="res://scripts/button_puzzle_controller.gd" id="6_puzzle"]
+[ext_resource type="Script" uid="uid://cum4m0sn540n7" path="res://scripts/button_puzzle_controller.gd" id="6_puzzle"]
 [ext_resource type="PackedScene" uid="uid://bwx7qp3r4n5km" path="res://scenes/prefabs/code_lock.tscn" id="7_codelock"]
 [ext_resource type="PackedScene" uid="uid://cfr5xpqhv6w2m" path="res://scenes/prefabs/pressure_plate.tscn" id="8_plate"]
 [ext_resource type="PackedScene" uid="uid://dkn5xrq8w3jpm" path="res://scenes/prefabs/win_area.tscn" id="9_win"]
@@ -28,23 +28,23 @@ ambient_light_color = Color(0.4, 0.4, 0.45, 1)
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
 size = Vector3(80, 1, 16)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
-albedo_color = Color(0.25, 0.25, 0.3, 1)
-
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 size = Vector3(80, 1, 16)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
-albedo_color = Color(0.4, 0.4, 0.45, 1)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.25, 0.25, 0.3, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall_long"]
+size = Vector3(12, 4, 0.3)
 
 [sub_resource type="BoxMesh" id="BoxMesh_wall_long"]
 size = Vector3(12, 4, 0.3)
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wall"]
+albedo_color = Color(0.4, 0.4, 0.45, 1)
+
 [sub_resource type="BoxMesh" id="BoxMesh_wall_short"]
 size = Vector3(5, 4, 0.3)
-
-[sub_resource type="BoxShape3D" id="BoxShape3D_wall_long"]
-size = Vector3(12, 4, 0.3)
 
 [node name="Main" type="Node3D"]
 
@@ -70,7 +70,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 
 [node name="GameUI" parent="." instance=ExtResource("2_ui")]
 
-[node name="Room1_Spawn" type="Node3D" parent="." node_paths=PackedStringArray("../Room1_Key/Door1")]
+[node name="Room1_Spawn" type="Node3D" parent="."]
 
 [node name="WallNorth" type="StaticBody3D" parent="Room1_Spawn"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -6)
@@ -122,7 +122,6 @@ text = "ESCAPE ROOM
 Find keys & solve puzzles!
 Press E to interact"
 font_size = 40
-horizontal_alignment = 1
 
 [node name="Room1_Key" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, 0)
@@ -173,21 +172,16 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -5.8)
 text = "Room 1: Find the Key
 Look around for a golden key!"
-font_size = 32
-horizontal_alignment = 1
 
 [node name="Room2_Buttons" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 24, 0, 0)
 
 [node name="ButtonPuzzle" type="Node3D" parent="Room2_Buttons" node_paths=PackedStringArray("door")]
 script = ExtResource("6_puzzle")
-correct_sequence = Array[int]([1, 2, 3])
 door = NodePath("../Door2")
 
 [node name="Button1" parent="Room2_Buttons/ButtonPuzzle" instance=ExtResource("5_button")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 1.2, -4)
-button_id = 1
-button_color = Color(0.8, 0.2, 0.2, 1)
 
 [node name="Button2" parent="Room2_Buttons/ButtonPuzzle" instance=ExtResource("5_button")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.2, -4)
@@ -201,7 +195,6 @@ button_color = Color(0.2, 0.8, 0.2, 1)
 
 [node name="Door2" parent="Room2_Buttons" instance=ExtResource("3_door")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 0)
-required_key = ""
 
 [node name="WallNorth" type="StaticBody3D" parent="Room2_Buttons"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -6)
@@ -241,8 +234,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, -5.8)
 text = "Room 2: Button Sequence
 Press: RED -> BLUE -> GREEN"
-font_size = 32
-horizontal_alignment = 1
 
 [node name="Room3_Code" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 36, 0, 0)
@@ -254,7 +245,6 @@ door = NodePath("../Door3")
 
 [node name="Door3" parent="Room3_Code" instance=ExtResource("3_door")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 0)
-required_key = ""
 
 [node name="WallNorth" type="StaticBody3D" parent="Room3_Code"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -6)
@@ -294,20 +284,17 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, -5.8)
 text = "Room 3: Code Lock
 Hint: 2^11 = ?"
-font_size = 32
-horizontal_alignment = 1
 
 [node name="Room4_Plate" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48, 0, 0)
 
 [node name="PressurePlate" parent="Room4_Plate" node_paths=PackedStringArray("door") instance=ExtResource("8_plate")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
-stay_open = true
 door = NodePath("../Door4")
+stay_open = true
 
 [node name="Door4" parent="Room4_Plate" instance=ExtResource("3_door")]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 6, 0, 0)
-required_key = ""
 
 [node name="WallNorth" type="StaticBody3D" parent="Room4_Plate"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -6)
@@ -347,8 +334,6 @@ surface_material_override/0 = SubResource("StandardMaterial3D_wall")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -5.8)
 text = "Room 4: Pressure Plate
 Stand on the plate!"
-font_size = 32
-horizontal_alignment = 1
 
 [node name="WinRoom" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 0, 0)
