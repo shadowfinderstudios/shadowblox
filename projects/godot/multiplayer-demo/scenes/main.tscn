@@ -8,8 +8,6 @@ size = Vector3(50, 0.5, 50)
 [node name="Main" type="Node3D"]
 script = ExtResource("1_game_manager")
 
-[node name="SbxRuntime" type="SbxRuntime" parent="."]
-
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]

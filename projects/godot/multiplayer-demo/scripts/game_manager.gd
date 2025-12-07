@@ -3,7 +3,9 @@ extends Node3D
 # GameManager - Main game controller for the Tag multiplayer demo
 # Coordinates between Godot (rendering/input) and shadowblox (game logic)
 
-@onready var sbx_runtime: Node = $SbxRuntime
+var sbx_runtime = null  # Will be SbxRuntime if available
+var sbx_available := false
+
 @onready var ui_layer: CanvasLayer = $UILayer
 @onready var status_label: Label = $UILayer/GameUI/StatusLabel
 @onready var player_list: ItemList = $UILayer/GameUI/PlayerList
@@ -34,12 +36,25 @@ func _ready() -> void:
 	main_menu.visible = true
 	game_ui.visible = false
 
-	# Check if SbxRuntime is available
-	if sbx_runtime and ClassDB.class_exists("SbxRuntime"):
-		print("[GameManager] SbxRuntime available")
-		_setup_luau_game()
+	# Check if SbxRuntime is available (extension loaded)
+	if ClassDB.class_exists("SbxRuntime"):
+		sbx_available = true
+		# Create SbxRuntime dynamically to avoid scene-load crashes
+		sbx_runtime = ClassDB.instantiate("SbxRuntime")
+		if sbx_runtime:
+			sbx_runtime.name = "SbxRuntime"
+			add_child(sbx_runtime)
+			print("[GameManager] ShadowBlox extension loaded - using Luau integration")
+			# Wait a frame for SbxRuntime to initialize
+			await get_tree().process_frame
+			_setup_luau_game()
+		else:
+			print("[GameManager] Failed to instantiate SbxRuntime")
+			sbx_available = false
 	else:
-		printerr("[GameManager] SbxRuntime not available - check GDExtension")
+		print("[GameManager] ShadowBlox extension not available")
+		print("[GameManager] To build: cd shadowblox_godot && scons platform=windows target=template_debug")
+		print("[GameManager] Game will run without Luau scripting")
 
 func _setup_luau_game() -> void:
 	# Load and execute the game initialization script
@@ -64,14 +79,13 @@ func _on_host_pressed() -> void:
 		game_ui.visible = true
 
 		# Set runtime as server
-		if sbx_runtime:
+		if sbx_runtime and sbx_available:
 			sbx_runtime.set_is_server(true)
+			# Create local player
+			sbx_runtime.create_player(1, display_name)
+			sbx_runtime.load_character(1)
 
-		# Create local player
-		sbx_runtime.create_player(1, display_name)
-		sbx_runtime.load_character(1)
 		_spawn_player_node(1, display_name, true)
-
 		status_label.text = "Hosting - Waiting for players..."
 
 func _on_join_pressed() -> void:
@@ -84,7 +98,7 @@ func _on_join_pressed() -> void:
 		game_ui.visible = true
 
 		# Set runtime as client
-		if sbx_runtime:
+		if sbx_runtime and sbx_available:
 			sbx_runtime.set_is_client(true)
 
 		status_label.text = "Connecting..."
@@ -100,8 +114,9 @@ func _on_client_connected() -> void:
 	# Create local player on client
 	var user_id = NetworkManager.local_player_id
 	var display_name = name_input.text if name_input.text != "" else "Player"
-	sbx_runtime.create_local_player(user_id, display_name)
-	sbx_runtime.load_character(user_id)
+	if sbx_runtime and sbx_available:
+		sbx_runtime.create_local_player(user_id, display_name)
+		sbx_runtime.load_character(user_id)
 	_spawn_player_node(user_id, display_name, true)
 
 func _on_client_disconnected() -> void:
@@ -113,7 +128,7 @@ func _on_client_disconnected() -> void:
 func _on_player_joined(user_id: int, display_name: String) -> void:
 	print("[GameManager] Player joined: ", display_name, " (ID: ", user_id, ")")
 
-	if NetworkManager.is_server:
+	if NetworkManager.is_server and sbx_runtime and sbx_available:
 		# Server creates the player in shadowblox
 		sbx_runtime.create_player(user_id, display_name)
 		sbx_runtime.load_character(user_id)
@@ -129,7 +144,7 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 func _on_player_left(user_id: int) -> void:
 	print("[GameManager] Player left: ", user_id)
 
-	if NetworkManager.is_server:
+	if NetworkManager.is_server and sbx_runtime and sbx_available:
 		sbx_runtime.remove_player(user_id)
 
 	# Remove visual representation
