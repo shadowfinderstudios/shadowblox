@@ -18,7 +18,7 @@ func _ready() -> void:
 	original_color = button_color
 	update_color()
 
-func interact(player: Node3D) -> void:
+func interact(_player: Node3D) -> void:
 	press()
 
 func press() -> void:

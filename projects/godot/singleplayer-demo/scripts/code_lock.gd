@@ -13,7 +13,7 @@ signal code_entered(code: String)
 signal code_correct
 signal code_wrong
 
-func interact(player: Node3D) -> void:
+func interact(_player: Node3D) -> void:
 	show_code_ui()
 
 func show_code_ui() -> void:
