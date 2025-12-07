@@ -101,3 +101,8 @@ else:
 
 env.NoCache(library)
 Default(library)
+
+# Copy built library to the demo project
+demo_bin_dir = "../projects/godot/singleplayer-demo/bin/shadowblox/"
+install = env.Install(demo_bin_dir, library)
+Default(install)
