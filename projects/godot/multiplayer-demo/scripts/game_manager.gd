@@ -206,13 +206,15 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 		local_player_node = player_node
 		var camera = Camera3D.new()
 		camera.position = Vector3(0, 5, 10)
+		player_node.add_child(camera)  # Add to tree BEFORE look_at
 		camera.look_at(Vector3.ZERO)
-		player_node.add_child(camera)
 		camera.current = true
 
 func _process(delta: float) -> void:
 	if local_player_node:
 		_handle_input(delta)
+		# Send our position to the server/clients
+		_send_position_update()
 
 	# Sync player positions from shadowblox (simplified for demo)
 	_sync_player_positions()
@@ -238,9 +240,52 @@ func _handle_input(delta: float) -> void:
 		local_player_node.position.x = clamp(local_player_node.position.x, -20, 20)
 		local_player_node.position.z = clamp(local_player_node.position.z, -20, 20)
 
+var _last_sent_position := Vector3.ZERO
+var _position_send_timer := 0.0
+const POSITION_SEND_INTERVAL := 0.05  # 20 updates per second
+
+func _send_position_update() -> void:
+	if not local_player_node:
+		return
+
+	# Only send if position changed significantly
+	var current_pos = local_player_node.position
+	if current_pos.distance_to(_last_sent_position) < 0.01:
+		return
+
+	_last_sent_position = current_pos
+	var user_id = NetworkManager.local_player_id
+
+	if NetworkManager.is_server:
+		# Server broadcasts to all clients
+		_broadcast_position.rpc(user_id, current_pos)
+	else:
+		# Client sends to server
+		_send_position_to_server.rpc_id(1, user_id, current_pos)
+
+@rpc("any_peer", "unreliable_ordered")
+func _send_position_to_server(user_id: int, pos: Vector3) -> void:
+	if not NetworkManager.is_server:
+		return
+	# Server received position from client, broadcast to all
+	_broadcast_position.rpc(user_id, pos)
+	# Also update locally on server
+	_update_player_position(user_id, pos)
+
+@rpc("authority", "unreliable_ordered", "call_local")
+func _broadcast_position(user_id: int, pos: Vector3) -> void:
+	_update_player_position(user_id, pos)
+
+func _update_player_position(user_id: int, pos: Vector3) -> void:
+	# Don't update our own position from network
+	if user_id == NetworkManager.local_player_id:
+		return
+
+	if player_nodes.has(user_id):
+		player_nodes[user_id].position = pos
+
 func _sync_player_positions() -> void:
-	# In a full implementation, this would sync with the shadowblox runtime
-	# For now, player movement is handled directly in Godot
+	# Position sync is now handled by RPCs above
 	pass
 
 func _update_player_list() -> void:
