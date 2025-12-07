@@ -50,6 +50,8 @@ enum UdataTag : uint8_t {
 	RBXScriptSignalUdata = 4,
 	RBXScriptConnectionUdata = 5,
 
+	Vector3Udata = 6,
+
 	Test1Udata = 124,
 	Test2Udata = 125,
 	Test3Udata = 126,

@@ -22,6 +22,7 @@
 #include "Sbx/DataTypes/Enums.hpp"
 #include "Sbx/DataTypes/RBXScriptConnection.hpp"
 #include "Sbx/DataTypes/RBXScriptSignal.hpp"
+#include "Sbx/DataTypes/Vector3.hpp"
 
 namespace SBX::DataTypes {
 
@@ -34,6 +35,8 @@ void luaSBX_opendatatypes(lua_State *L) {
 
 	RBXScriptSignal::Register(L);
 	RBXScriptConnection::Register(L);
+
+	Vector3::Register(L);
 }
 
 } //namespace SBX::DataTypes

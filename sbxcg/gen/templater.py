@@ -35,11 +35,14 @@ def make_block(
     base_indent: int = 0,
     content_indent: int = 0,
 ):
-    return f"""{"\t" * base_indent}// clang-format on
-{"\t" * base_indent}/* BEGIN USER CODE {name} */
-{"\t" * content_indent}{blocks.get(name, "")}
-{"\t" * base_indent}/* END USER CODE {name} */
-{"\t" * base_indent}// clang-format off"""
+    base_tabs = "\t" * base_indent
+    content_tabs = "\t" * content_indent
+    content = blocks.get(name, "")
+    return f"""{base_tabs}// clang-format on
+{base_tabs}/* BEGIN USER CODE {name} */
+{content_tabs}{content}
+{base_tabs}/* END USER CODE {name} */
+{base_tabs}// clang-format off"""
 
 
 def extract_blocks(contents: str):
@@ -141,7 +144,8 @@ def generate_param_names(dump_member: dict, includes: set[str], classes: dict):
     if len(parameters) == 0:
         return ""
 
-    return f", {', '.join([f'"{p["Name"]}"' for p in parameters])}"
+    param_names = ", ".join(['"{}"'.format(p["Name"]) for p in parameters])
+    return f", {param_names}"
 
 
 def generate_security(security: str):
