@@ -64,7 +64,8 @@ if env_base["toolchain"] in ["msvc", "msvc-clang"]:
     elif env_base["config"] == "release":
         env_base.Append(CCFLAGS=["/O3"])
 else:
-    env_base.Append(CCFLAGS=["-std=c++20"])
+    # -fPIC is needed to link static libs into shared libraries (GDExtension)
+    env_base.Append(CCFLAGS=["-std=c++20", "-fPIC"])
     if env_base["config"] == "debug":
         env_base.Append(CCFLAGS=["-O2", "-g"])
     elif env_base["config"] == "relwithdbg":

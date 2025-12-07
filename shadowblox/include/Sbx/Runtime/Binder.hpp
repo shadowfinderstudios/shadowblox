@@ -17,7 +17,9 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#if __cpp_exceptions
 #include <exception>
+#endif
 #include <functional>
 #include <tuple>
 #include <type_traits>
@@ -33,12 +35,14 @@
 
 namespace SBX {
 
+#if __cpp_exceptions
 /**
  * @brief Throw this error inside functions bound to Luau to trigger a
  * luaL_error.
  * @see luaSBX_bindcxx
  */
 class LuauBinderError : public std::exception {};
+#endif
 
 enum BindPurpose : uint8_t {
 	BindFunction,
@@ -274,6 +278,7 @@ int luaSBX_bindcxx(lua_State *L) {
 
 	using FT = FuncType<TF, name, purpose>;
 
+#if __cpp_exceptions
 	try {
 		if constexpr (std::is_same<typename FT::RetType, void>()) {
 			FT::Invoke(L, F);
@@ -284,6 +289,15 @@ int luaSBX_bindcxx(lua_State *L) {
 	} catch (LuauBinderError &e) {
 		luaL_error(L, "%s", e.what());
 	}
+#else
+	// Without exceptions, errors are handled via luaL_error directly
+	if constexpr (std::is_same<typename FT::RetType, void>()) {
+		FT::Invoke(L, F);
+		return 0;
+	} else {
+		return luaSBX_pushres<typename FT::RetType>(L, FT::Invoke(L, F));
+	}
+#endif
 }
 
 } //namespace SBX

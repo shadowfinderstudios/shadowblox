@@ -16,6 +16,8 @@
 
 #include "godot_cpp/variant/utility_functions.hpp"
 
+#include "Sbx/Classes/Part.hpp"
+#include "Sbx/DataTypes/Vector3.hpp"
 #include "Sbx/GodotBridge.hpp"
 
 namespace SbxGD {

@@ -14,17 +14,27 @@
 
 #include "SbxGD/SbxRuntime.hpp"
 
+#include <string>
+
 #include "godot_cpp/variant/utility_functions.hpp"
+
+#include "Luau/Compiler.h"
+#include "lua.h"
+#include "lualib.h"
 
 #include "Sbx/GodotBridge.hpp"
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/LuauRuntime.hpp"
+#include "Sbx/Runtime/Stack.hpp"
 
 namespace SbxGD {
 
 static void runtime_init_callback(lua_State *L) {
 	SBX::Bridge::RegisterAllClasses(L);
 }
+
+// GC step sizes for each VM type
+static uint32_t gc_step_sizes[SBX::VMMax] = { 200, 200 };
 
 SbxRuntime::SbxRuntime() {
 }
@@ -39,7 +49,7 @@ void SbxRuntime::_ready() {
 void SbxRuntime::_process(double delta) {
 	if (runtime) {
 		// Step the garbage collector each frame
-		runtime->GCStep(200, delta);
+		runtime->GCStep(gc_step_sizes, delta);
 	}
 }
 
@@ -67,10 +77,23 @@ godot::String SbxRuntime::execute_script(const godot::String &code) {
 	lua_State *T = lua_newthread(L);
 	luaL_sandboxthread(T);
 
-	SBX::ExecOutput out = SBX::luaSBX_exec(T, code.utf8().get_data());
+	// Compile the script
+	Luau::CompileOptions opts;
+	std::string bytecode = Luau::compile(code.utf8().get_data(), opts);
 
-	if (out.status != LUA_OK) {
-		return godot::String("Error: ") + godot::String(out.error.c_str());
+	// Load and execute
+	if (luau_load(T, "=script", bytecode.data(), bytecode.size(), 0) != 0) {
+		std::string error = SBX::LuauStackOp<std::string>::Get(T, -1);
+		lua_pop(T, 1);
+		return godot::String("Compile Error: ") + godot::String(error.c_str());
+	}
+
+	int status = SBX::luaSBX_resume(T, nullptr, 0, 1.0);
+
+	if (status != LUA_OK && status != LUA_YIELD) {
+		std::string error = SBX::LuauStackOp<std::string>::Get(T, -1);
+		lua_pop(T, 1);
+		return godot::String("Runtime Error: ") + godot::String(error.c_str());
 	}
 
 	return "OK";
@@ -78,7 +101,8 @@ godot::String SbxRuntime::execute_script(const godot::String &code) {
 
 void SbxRuntime::gc_step(int step_size) {
 	if (runtime) {
-		runtime->GCStep(step_size, 0.0);
+		uint32_t steps[SBX::VMMax] = { static_cast<uint32_t>(step_size), static_cast<uint32_t>(step_size) };
+		runtime->GCStep(steps, 0.0);
 	}
 }
 
@@ -87,7 +111,7 @@ int SbxRuntime::get_gc_memory() const {
 		return 0;
 	}
 
-	size_t memory[2];
+	int32_t memory[SBX::VMMax];
 	runtime->GCSize(memory);
 	return static_cast<int>(memory[0] + memory[1]);
 }
