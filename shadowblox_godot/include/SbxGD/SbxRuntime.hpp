@@ -31,6 +31,8 @@ class Player;
 class RunService;
 class Script;
 class Instance;
+class RemoteEvent;
+class RemoteFunction;
 }
 
 namespace SbxGD {
@@ -79,6 +81,28 @@ public:
 	// Singleton access
 	static SbxRuntime *get_singleton() { return singleton; }
 
+	// Multiplayer support
+	void set_is_server(bool is_server);
+	bool get_is_server() const { return isServer; }
+	void set_is_client(bool is_client);
+	bool get_is_client() const { return isClient; }
+
+	// Create a player (server-side)
+	void create_player(int64_t user_id, const godot::String &display_name);
+
+	// Remove a player (server-side)
+	void remove_player(int64_t user_id);
+
+	// Get player by user ID
+	std::shared_ptr<SBX::Classes::Player> get_player(int64_t user_id) const;
+
+	// Network event handling
+	void on_network_event(const godot::String &event_name, int64_t sender_id, const godot::PackedByteArray &data);
+	void on_network_function(const godot::String &function_name, int64_t sender_id, const godot::PackedByteArray &data, godot::PackedByteArray &response);
+
+	// Load character for a player
+	void load_character(int64_t user_id);
+
 protected:
 	static void _bind_methods();
 
@@ -87,6 +111,8 @@ private:
 	std::shared_ptr<SBX::Classes::DataModel> dataModel;
 	bool initialized = false;
 	double elapsedTime = 0.0;
+	bool isServer = true;
+	bool isClient = false;
 
 	static SbxRuntime *singleton;
 

@@ -24,9 +24,13 @@
 #include "lualib.h"
 
 #include "Sbx/Classes/DataModel.hpp"
+#include "Sbx/Classes/Humanoid.hpp"
+#include "Sbx/Classes/Model.hpp"
 #include "Sbx/Classes/Part.hpp"
 #include "Sbx/Classes/Players.hpp"
 #include "Sbx/Classes/Player.hpp"
+#include "Sbx/Classes/RemoteEvent.hpp"
+#include "Sbx/Classes/RemoteFunction.hpp"
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Script.hpp"
 #include "Sbx/Classes/Workspace.hpp"
@@ -233,6 +237,190 @@ int SbxRuntime::get_gc_memory() const {
 	return static_cast<int>(memory[0] + memory[1]);
 }
 
+void SbxRuntime::set_is_server(bool is_server) {
+	isServer = is_server;
+	auto runService = get_run_service();
+	if (runService) {
+		runService->SetIsServer(is_server);
+		runService->SetIsClient(!is_server);
+	}
+	godot::UtilityFunctions::print("[SbxRuntime] Set as server: ", is_server);
+}
+
+void SbxRuntime::set_is_client(bool is_client) {
+	isClient = is_client;
+	auto runService = get_run_service();
+	if (runService) {
+		runService->SetIsClient(is_client);
+		runService->SetIsServer(!is_client);
+	}
+	godot::UtilityFunctions::print("[SbxRuntime] Set as client: ", is_client);
+}
+
+void SbxRuntime::create_player(int64_t user_id, const godot::String &display_name) {
+	auto players = get_players();
+	if (players) {
+		// Create a new player (for server-side multiplayer)
+		auto player = std::make_shared<SBX::Classes::Player>();
+		player->SetSelf(player);
+		player->SetUserId(user_id);
+		player->SetDisplayName(display_name.utf8().get_data());
+		player->SetParent(players->GetSelf());
+
+		godot::UtilityFunctions::print("[SbxRuntime] Created player: ", display_name, " (ID: ", user_id, ")");
+	}
+}
+
+void SbxRuntime::remove_player(int64_t user_id) {
+	auto players = get_players();
+	if (players) {
+		auto player = players->GetPlayerByUserId(user_id);
+		if (player) {
+			players->RemovePlayer(player);
+			godot::UtilityFunctions::print("[SbxRuntime] Removed player ID: ", user_id);
+		}
+	}
+}
+
+std::shared_ptr<SBX::Classes::Player> SbxRuntime::get_player(int64_t user_id) const {
+	auto players = get_players();
+	if (players) {
+		return players->GetPlayerByUserId(user_id);
+	}
+	return nullptr;
+}
+
+void SbxRuntime::on_network_event(const godot::String &event_name, int64_t sender_id, const godot::PackedByteArray &data) {
+	// Find the RemoteEvent in the DataModel and fire the appropriate signal
+	if (!dataModel || !runtime) return;
+
+	// Get the sender player (for server events)
+	std::shared_ptr<SBX::Classes::Player> sender;
+	if (isServer) {
+		auto players = get_players();
+		if (players) {
+			sender = players->GetPlayerByUserId(sender_id);
+		}
+	}
+
+	// Convert data to std::vector
+	std::vector<uint8_t> dataVec(data.ptr(), data.ptr() + data.size());
+
+	// Search for the RemoteEvent in ReplicatedStorage
+	auto replicatedStorage = dataModel->GetService("ReplicatedStorage");
+	if (replicatedStorage) {
+		auto remoteEvents = replicatedStorage->FindFirstChild("RemoteEvents");
+		if (remoteEvents) {
+			auto event = remoteEvents->FindFirstChild(event_name.utf8().get_data());
+			if (event && event->IsA("RemoteEvent")) {
+				auto remoteEvent = std::dynamic_pointer_cast<SBX::Classes::RemoteEvent>(event);
+				if (remoteEvent) {
+					lua_State *L = runtime->GetVM(SBX::UserVM);
+					if (isServer) {
+						remoteEvent->OnServerEvent(sender, L, dataVec);
+					} else {
+						remoteEvent->OnClientEvent(L, dataVec);
+					}
+				}
+			}
+		}
+	}
+}
+
+void SbxRuntime::on_network_function(const godot::String &function_name, int64_t sender_id, const godot::PackedByteArray &data, godot::PackedByteArray &response) {
+	// Find the RemoteFunction and invoke the callback
+	if (!dataModel || !runtime) return;
+
+	std::shared_ptr<SBX::Classes::Player> sender;
+	if (isServer) {
+		auto players = get_players();
+		if (players) {
+			sender = players->GetPlayerByUserId(sender_id);
+		}
+	}
+
+	std::vector<uint8_t> dataVec(data.ptr(), data.ptr() + data.size());
+
+	auto replicatedStorage = dataModel->GetService("ReplicatedStorage");
+	if (replicatedStorage) {
+		auto remoteFunctions = replicatedStorage->FindFirstChild("RemoteFunctions");
+		if (remoteFunctions) {
+			auto func = remoteFunctions->FindFirstChild(function_name.utf8().get_data());
+			if (func && func->IsA("RemoteFunction")) {
+				auto remoteFunction = std::dynamic_pointer_cast<SBX::Classes::RemoteFunction>(func);
+				if (remoteFunction) {
+					lua_State *L = runtime->GetVM(SBX::UserVM);
+					std::vector<uint8_t> result;
+					if (isServer) {
+						result = remoteFunction->HandleServerInvoke(sender, L, dataVec);
+					} else {
+						result = remoteFunction->HandleClientInvoke(L, dataVec);
+					}
+					response.resize(result.size());
+					for (size_t i = 0; i < result.size(); ++i) {
+						response[i] = result[i];
+					}
+				}
+			}
+		}
+	}
+}
+
+void SbxRuntime::load_character(int64_t user_id) {
+	auto players = get_players();
+	if (!players) return;
+
+	auto player = players->GetPlayerByUserId(user_id);
+	if (!player) return;
+
+	auto workspace = get_workspace();
+	if (!workspace) return;
+
+	// Create a character model
+	auto character = std::make_shared<SBX::Classes::Model>();
+	character->SetSelf(character);
+	character->SetName(player->GetDisplayName());
+
+	// Create the HumanoidRootPart
+	auto rootPart = std::make_shared<SBX::Classes::Part>();
+	rootPart->SetSelf(rootPart);
+	rootPart->SetName("HumanoidRootPart");
+	rootPart->SetSize(SBX::DataTypes::Vector3(2.0, 2.0, 1.0));
+	rootPart->SetAnchored(false);
+	rootPart->SetCanCollide(true);
+	rootPart->SetParent(character);
+	character->SetPrimaryPart(rootPart);
+
+	// Create Torso
+	auto torso = std::make_shared<SBX::Classes::Part>();
+	torso->SetSelf(torso);
+	torso->SetName("Torso");
+	torso->SetSize(SBX::DataTypes::Vector3(2.0, 2.0, 1.0));
+	torso->SetAnchored(false);
+	torso->SetParent(character);
+
+	// Create Head
+	auto head = std::make_shared<SBX::Classes::Part>();
+	head->SetSelf(head);
+	head->SetName("Head");
+	head->SetSize(SBX::DataTypes::Vector3(1.0, 1.0, 1.0));
+	head->SetAnchored(false);
+	head->SetParent(character);
+
+	// Create Humanoid
+	auto humanoid = std::make_shared<SBX::Classes::Humanoid>();
+	humanoid->SetSelf(humanoid);
+	humanoid->SetParent(character);
+
+	// Set the character's parent to workspace
+	character->SetParent(workspace);
+
+	// Assign character to player
+	player->SetCharacter(character);
+
+	godot::UtilityFunctions::print("[SbxRuntime] Loaded character for player: ", godot::String(player->GetDisplayName()));
+}
+
 void SbxRuntime::_bind_methods() {
 	godot::ClassDB::bind_method(godot::D_METHOD("execute_script", "code"), &SbxRuntime::execute_script);
 	godot::ClassDB::bind_method(godot::D_METHOD("gc_step", "step_size"), &SbxRuntime::gc_step);
@@ -240,6 +428,33 @@ void SbxRuntime::_bind_methods() {
 	godot::ClassDB::bind_method(godot::D_METHOD("create_local_player", "user_id", "display_name"), &SbxRuntime::create_local_player);
 	godot::ClassDB::bind_method(godot::D_METHOD("fire_heartbeat", "delta"), &SbxRuntime::fire_heartbeat);
 	godot::ClassDB::bind_method(godot::D_METHOD("fire_stepped", "time", "delta"), &SbxRuntime::fire_stepped);
+
+	// Multiplayer methods
+	godot::ClassDB::bind_method(godot::D_METHOD("set_is_server", "is_server"), &SbxRuntime::set_is_server);
+	godot::ClassDB::bind_method(godot::D_METHOD("get_is_server"), &SbxRuntime::get_is_server);
+	godot::ClassDB::bind_method(godot::D_METHOD("set_is_client", "is_client"), &SbxRuntime::set_is_client);
+	godot::ClassDB::bind_method(godot::D_METHOD("get_is_client"), &SbxRuntime::get_is_client);
+	godot::ClassDB::bind_method(godot::D_METHOD("create_player", "user_id", "display_name"), &SbxRuntime::create_player);
+	godot::ClassDB::bind_method(godot::D_METHOD("remove_player", "user_id"), &SbxRuntime::remove_player);
+	godot::ClassDB::bind_method(godot::D_METHOD("load_character", "user_id"), &SbxRuntime::load_character);
+	godot::ClassDB::bind_method(godot::D_METHOD("on_network_event", "event_name", "sender_id", "data"), &SbxRuntime::on_network_event);
+
+	// Signals for network communication
+	ADD_SIGNAL(godot::MethodInfo("network_event_to_server",
+			godot::PropertyInfo(godot::Variant::STRING, "event_name"),
+			godot::PropertyInfo(godot::Variant::PACKED_BYTE_ARRAY, "data")));
+	ADD_SIGNAL(godot::MethodInfo("network_event_to_client",
+			godot::PropertyInfo(godot::Variant::STRING, "event_name"),
+			godot::PropertyInfo(godot::Variant::INT, "target_id"),
+			godot::PropertyInfo(godot::Variant::PACKED_BYTE_ARRAY, "data")));
+	ADD_SIGNAL(godot::MethodInfo("network_event_to_all_clients",
+			godot::PropertyInfo(godot::Variant::STRING, "event_name"),
+			godot::PropertyInfo(godot::Variant::PACKED_BYTE_ARRAY, "data")));
+	ADD_SIGNAL(godot::MethodInfo("player_added",
+			godot::PropertyInfo(godot::Variant::INT, "user_id"),
+			godot::PropertyInfo(godot::Variant::STRING, "display_name")));
+	ADD_SIGNAL(godot::MethodInfo("player_removing",
+			godot::PropertyInfo(godot::Variant::INT, "user_id")));
 }
 
 } // namespace SbxGD
