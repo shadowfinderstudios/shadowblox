@@ -27,6 +27,7 @@ func _ready() -> void:
 	NetworkManager.client_disconnected.connect(_on_client_disconnected)
 	NetworkManager.player_joined.connect(_on_player_joined)
 	NetworkManager.player_left.connect(_on_player_left)
+	NetworkManager.existing_player.connect(_on_existing_player)
 
 	# Connect UI buttons
 	host_button.pressed.connect(_on_host_pressed)
@@ -72,7 +73,7 @@ func _setup_luau_game() -> void:
 
 func _on_host_pressed() -> void:
 	var display_name = name_input.text if name_input.text != "" else "Host"
-	var error = NetworkManager.start_server()
+	var error = NetworkManager.start_server(7777, display_name)
 	if error == OK:
 		main_menu.visible = false
 		game_ui.visible = true
@@ -140,6 +141,17 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 	_update_player_list()
 	_update_status()
 
+func _on_existing_player(user_id: int, display_name: String) -> void:
+	# Called on client when receiving info about players already in the game
+	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
+
+	# Spawn visual representation (always remote for existing players)
+	if not player_nodes.has(user_id):
+		_spawn_player_node(user_id, display_name, false)
+
+	_update_player_list()
+	_update_status()
+
 func _on_player_left(user_id: int) -> void:
 	print("[GameManager] Player left: ", user_id)
 
@@ -185,7 +197,11 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 	var spawn_offset = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
 	player_node.position = spawn_offset
 
-	# Add collision if local player
+	# Add to tree first (required for look_at)
+	add_child(player_node)
+	player_nodes[user_id] = player_node
+
+	# Add camera for local player
 	if is_local:
 		local_player_node = player_node
 		var camera = Camera3D.new()
@@ -193,9 +209,6 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 		camera.look_at(Vector3.ZERO)
 		player_node.add_child(camera)
 		camera.current = true
-
-	add_child(player_node)
-	player_nodes[user_id] = player_node
 
 func _process(delta: float) -> void:
 	if local_player_node:

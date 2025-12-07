@@ -13,6 +13,7 @@ var local_player_id := 0
 
 # Player info storage (server-side)
 var player_info := {}  # peer_id -> {user_id, display_name}
+var host_display_name := "Host"  # Store host name for syncing to clients
 
 signal server_started
 signal server_stopped
@@ -20,6 +21,7 @@ signal client_connected
 signal client_disconnected
 signal player_joined(user_id: int, display_name: String)
 signal player_left(user_id: int)
+signal existing_player(user_id: int, display_name: String)  # For syncing existing players to new clients
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -28,7 +30,7 @@ func _ready() -> void:
 	multiplayer.connection_failed.connect(_on_connection_failed)
 	multiplayer.server_disconnected.connect(_on_server_disconnected)
 
-func start_server(port: int = DEFAULT_PORT) -> Error:
+func start_server(port: int = DEFAULT_PORT, display_name: String = "Host") -> Error:
 	peer = ENetMultiplayerPeer.new()
 	var error = peer.create_server(port, MAX_CLIENTS)
 	if error != OK:
@@ -39,6 +41,7 @@ func start_server(port: int = DEFAULT_PORT) -> Error:
 	is_server = true
 	is_client = false
 	local_player_id = 1
+	host_display_name = display_name
 
 	print("[NetworkManager] Server started on port ", port)
 	server_started.emit()
@@ -83,8 +86,14 @@ func disconnect_from_server() -> void:
 func _on_peer_connected(id: int) -> void:
 	print("[NetworkManager] Peer connected: ", id)
 	if is_server:
+		# Build full player list including host
+		var all_players = {
+			1: {"user_id": 1, "display_name": host_display_name}
+		}
+		for peer_id in player_info:
+			all_players[peer_id] = player_info[peer_id]
 		# Send server info to the new client
-		rpc_id(id, "_receive_server_info", player_info)
+		rpc_id(id, "_receive_server_info", all_players)
 
 func _on_peer_disconnected(id: int) -> void:
 	print("[NetworkManager] Peer disconnected: ", id)
@@ -152,13 +161,22 @@ func _receive_user_id(user_id: int) -> void:
 @rpc("authority", "reliable")
 func _receive_server_info(info: Dictionary) -> void:
 	print("[NetworkManager] Received server info with ", info.size(), " players")
+	# Spawn all existing players
+	for peer_id in info:
+		var player_data = info[peer_id]
+		var user_id = player_data.user_id
+		var display_name = player_data.display_name
+		# Don't spawn ourselves - we handle that in _on_client_connected
+		if user_id != local_player_id:
+			print("[NetworkManager] Existing player: ", display_name, " (ID: ", user_id, ")")
+			existing_player.emit(user_id, display_name)
 
-@rpc("authority", "reliable", "call_local")
+@rpc("authority", "reliable")
 func _on_player_joined(user_id: int, display_name: String) -> void:
 	print("[NetworkManager] Player joined: ", display_name, " (ID: ", user_id, ")")
 	player_joined.emit(user_id, display_name)
 
-@rpc("authority", "reliable", "call_local")
+@rpc("authority", "reliable")
 func _on_player_left(user_id: int) -> void:
 	print("[NetworkManager] Player left: ", user_id)
 	player_left.emit(user_id)

@@ -27,6 +27,7 @@
 #include "Sbx/Classes/Players.hpp"
 #include "Sbx/Classes/RemoteEvent.hpp"
 #include "Sbx/Classes/RemoteFunction.hpp"
+#include "Sbx/Classes/ReplicatedStorage.hpp"
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Script.hpp"
 #include "Sbx/Classes/SpawnLocation.hpp"
@@ -55,6 +56,7 @@ void InitializeAllClasses() {
 	Classes::SpawnLocation::InitializeClass();
 	Classes::RemoteEvent::InitializeClass();
 	Classes::RemoteFunction::InitializeClass();
+	Classes::ReplicatedStorage::InitializeClass();
 	Classes::ValueBase::InitializeClass();
 	Classes::StringValue::InitializeClass();
 	Classes::IntValue::InitializeClass();
