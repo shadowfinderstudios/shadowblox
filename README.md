@@ -1,6 +1,6 @@
 # shadowblox
 
-This is a version of Shadowblox that supports multiplayer, luau script parsing, and an extensive implementation of the data model.
+This is a version of Shadowblox that supports multiplayer, luau scripts, demos, lobbies, host migration and an extensive implementation of the data model.
 
 Shadow `DataModel` and script runner emulating Roblox APIs and behaviors. Hooks
 into a frontend that provides rendering, input, etc., such as
@@ -34,4 +34,4 @@ See `COPYRIGHT.txt`.
   [godot-luau-script](https://git.seki.pw/Fumohouse/godot-luau-script), a
   GDExtension adding support for Luau (but not Roblox APIs) to Godot 4.x.
   Various components of shadowblox are based off of godot-luau-script.
-  Shadowfinder Studios contributed the development of a more complete implementation of the data model, luau implemntation and Godot integration along with a singleplayer demo, multiplayer demo, multiplayer lobby demo with host migration.
+  Shadowfinder Studios contributed the development of a more complete implementation of the data model, luau implementation and Godot integration along with a singleplayer demo, multiplayer demo, multiplayer lobby demo with host migration.
