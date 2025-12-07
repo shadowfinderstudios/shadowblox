@@ -14,6 +14,8 @@
 
 #include "Sbx/GodotBridge.hpp"
 
+#include <cstdio>
+
 #include "lua.h"
 
 #include "Sbx/Classes/ClassDB.hpp"
@@ -347,35 +349,64 @@ void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script)
 
 // Register game/workspace globals
 void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel) {
-	if (!L || !dataModel) return;
+	printf("[RegisterGlobals] Starting...\n");
+	fflush(stdout);
+	if (!L || !dataModel) {
+		printf("[RegisterGlobals] ERROR: L or dataModel is null!\n");
+		fflush(stdout);
+		return;
+	}
 
+	printf("[RegisterGlobals] Getting workspace...\n");
+	fflush(stdout);
 	// Ensure services are created
 	auto workspace = dataModel->GetWorkspace();
+	printf("[RegisterGlobals] Got workspace, getting RunService...\n");
+	fflush(stdout);
 	dataModel->GetRunService();
+	printf("[RegisterGlobals] Got RunService, getting Players...\n");
+	fflush(stdout);
 	dataModel->GetService("Players");
-	dataModel->GetService("ReplicatedStorage");
-	dataModel->GetService("ServerScriptService");
-	dataModel->GetService("ServerStorage");
-	dataModel->GetService("StarterGui");
-	dataModel->GetService("StarterPlayer");
+	printf("[RegisterGlobals] Got Players, skipping other services for now...\n");
+	fflush(stdout);
+	// Skip services that might not exist to isolate the crash
+	// dataModel->GetService("ReplicatedStorage");
+	// dataModel->GetService("ServerScriptService");
+	// dataModel->GetService("ServerStorage");
+	// dataModel->GetService("StarterGui");
+	// dataModel->GetService("StarterPlayer");
 
+	printf("[RegisterGlobals] About to push DataModel to Lua...\n");
+	fflush(stdout);
 	// Push game (DataModel) global
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);
+	printf("[RegisterGlobals] DataModel pushed, setting global 'game'...\n");
+	fflush(stdout);
 	lua_setglobal(L, "game");
+	printf("[RegisterGlobals] 'game' global set\n");
+	fflush(stdout);
 
 	// Also set as "Game" for compatibility
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);
 	lua_setglobal(L, "Game");
+	printf("[RegisterGlobals] 'Game' global set\n");
+	fflush(stdout);
 
 	// Push workspace global
 	if (workspace) {
+		printf("[RegisterGlobals] Pushing workspace to Lua...\n");
+		fflush(stdout);
 		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, workspace);
 		lua_setglobal(L, "workspace");
 
 		// Also set as "Workspace" for compatibility
 		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, workspace);
 		lua_setglobal(L, "Workspace");
+		printf("[RegisterGlobals] Workspace globals set\n");
+		fflush(stdout);
 	}
+	printf("[RegisterGlobals] Done!\n");
+	fflush(stdout);
 }
 
 // Humanoid functions
