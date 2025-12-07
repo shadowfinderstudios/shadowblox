@@ -21,7 +21,7 @@ signal client_connected
 signal client_disconnected
 signal player_joined(user_id: int, display_name: String)
 signal player_left(user_id: int)
-signal existing_player(user_id: int, display_name: String)  # For syncing existing players to new clients
+signal existing_player(user_id: int, display_name: String, position: Vector3)  # For syncing existing players to new clients
 
 func _ready() -> void:
 	multiplayer.peer_connected.connect(_on_peer_connected)
@@ -86,12 +86,20 @@ func disconnect_from_server() -> void:
 func _on_peer_connected(id: int) -> void:
 	print("[NetworkManager] Peer connected: ", id)
 	if is_server:
-		# Build full player list including host
+		# Get positions from game manager
+		var game_manager = _get_game_manager()
+
+		# Build full player list including host with positions
 		var all_players = {
-			1: {"user_id": 1, "display_name": host_display_name}
+			1: {"user_id": 1, "display_name": host_display_name, "position": _get_player_position(1, game_manager)}
 		}
 		for peer_id in player_info:
-			all_players[peer_id] = player_info[peer_id]
+			var user_id = player_info[peer_id].user_id
+			all_players[peer_id] = {
+				"user_id": user_id,
+				"display_name": player_info[peer_id].display_name,
+				"position": _get_player_position(user_id, game_manager)
+			}
 		# Send server info to the new client
 		rpc_id(id, "_receive_server_info", all_players)
 
@@ -166,10 +174,11 @@ func _receive_server_info(info: Dictionary) -> void:
 		var player_data = info[peer_id]
 		var user_id = player_data.user_id
 		var display_name = player_data.display_name
+		var position = player_data.get("position", Vector3.ZERO)
 		# Don't spawn ourselves - we handle that in _on_client_connected
 		if user_id != local_player_id:
-			print("[NetworkManager] Existing player: ", display_name, " (ID: ", user_id, ")")
-			existing_player.emit(user_id, display_name)
+			print("[NetworkManager] Existing player: ", display_name, " (ID: ", user_id, ") at ", position)
+			existing_player.emit(user_id, display_name, position)
 
 @rpc("authority", "reliable")
 func _on_player_joined(user_id: int, display_name: String) -> void:
@@ -248,3 +257,20 @@ func get_player_display_name(user_id: int) -> String:
 			if player_info[peer_id].user_id == user_id:
 				return player_info[peer_id].display_name
 	return "Unknown"
+
+func _get_game_manager() -> Node:
+	var root = get_tree().root
+	for child in root.get_children():
+		if child.has_node("SbxRuntime"):
+			return child
+	return null
+
+func _get_player_position(user_id: int, game_manager: Node) -> Vector3:
+	if game_manager == null:
+		return Vector3.ZERO
+	if game_manager.has_method("get_player_position"):
+		return game_manager.get_player_position(user_id)
+	# Fallback: check player_nodes directly
+	if "player_nodes" in game_manager and game_manager.player_nodes.has(user_id):
+		return game_manager.player_nodes[user_id].position
+	return Vector3.ZERO

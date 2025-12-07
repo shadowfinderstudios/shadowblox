@@ -150,16 +150,18 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 
 	_update_player_list()
 
-func _on_existing_player(user_id: int, display_name: String) -> void:
-	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
+func _on_existing_player(user_id: int, display_name: String, position: Vector3) -> void:
+	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ") at ", position)
 
 	# Create existing players in Luau for position sync
 	if sbx_runtime and sbx_available:
 		sbx_runtime.create_player(user_id, display_name)
 		sbx_runtime.load_character(user_id)
+		# Set the initial position in Luau
+		sbx_runtime.set_player_position(user_id, position)
 
 	if not player_nodes.has(user_id):
-		_spawn_player_node(user_id, display_name, false)
+		_spawn_player_node(user_id, display_name, false, position)
 	_update_player_list()
 
 func _on_player_left(user_id: int) -> void:
@@ -193,7 +195,7 @@ func _on_status_text_changed(text: String) -> void:
 	if NetworkManager.is_server:
 		_sync_status_text.rpc(text)
 
-func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> void:
+func _spawn_player_node(user_id: int, display_name: String, is_local: bool, initial_position: Vector3 = Vector3.ZERO) -> void:
 	var player_node = Node3D.new()
 	player_node.name = "Player_" + str(user_id)
 
@@ -220,8 +222,11 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 	label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	player_node.add_child(label_3d)
 
-	# Initial position
-	player_node.position = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
+	# Initial position - use provided position or random if not given
+	if initial_position != Vector3.ZERO:
+		player_node.position = initial_position
+	else:
+		player_node.position = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
 
 	add_child(player_node)
 	player_nodes[user_id] = player_node
