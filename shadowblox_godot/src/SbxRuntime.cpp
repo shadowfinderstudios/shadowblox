@@ -63,11 +63,13 @@ SbxRuntime::SbxRuntime() {
 }
 
 SbxRuntime::~SbxRuntime() {
+	godot::UtilityFunctions::print("[SbxRuntime] Destructor called");
 	// Cleanup should have already happened in _exit_tree()
 	// Just clear singleton as a safety measure
 	if (singleton == this) {
 		singleton = nullptr;
 	}
+	godot::UtilityFunctions::print("[SbxRuntime] Destructor complete");
 }
 
 void SbxRuntime::_ready() {
@@ -76,29 +78,38 @@ void SbxRuntime::_ready() {
 }
 
 void SbxRuntime::_exit_tree() {
-	// This is called when the node is removed from the scene tree
-	// This happens BEFORE the destructor during normal shutdown
+	godot::UtilityFunctions::print("[SbxRuntime] _exit_tree() called - beginning cleanup");
 
 	// Stop RunService first to prevent any more signals from firing
 	if (dataModel) {
+		godot::UtilityFunctions::print("[SbxRuntime] Stopping RunService...");
 		auto runService = dataModel->GetRunService();
 		if (runService) {
 			runService->Stop();
+			godot::UtilityFunctions::print("[SbxRuntime] RunService stopped");
 		}
 	}
 
 	// Clear the DataModel before destroying the Luau runtime
 	// This breaks shared_ptr cycles
+	godot::UtilityFunctions::print("[SbxRuntime] Resetting dataModel...");
 	dataModel.reset();
+	godot::UtilityFunctions::print("[SbxRuntime] dataModel reset complete");
 
 	// Destroy the Luau runtime
+	godot::UtilityFunctions::print("[SbxRuntime] Resetting runtime...");
 	runtime.reset();
+	godot::UtilityFunctions::print("[SbxRuntime] runtime reset complete");
+
+	godot::UtilityFunctions::print("[SbxRuntime] Resetting logger...");
 	logger.reset();
+	godot::UtilityFunctions::print("[SbxRuntime] logger reset complete");
 
 	// Clear singleton
 	if (singleton == this) {
 		singleton = nullptr;
 	}
+	godot::UtilityFunctions::print("[SbxRuntime] _exit_tree() complete");
 }
 
 void SbxRuntime::_process(double delta) {
