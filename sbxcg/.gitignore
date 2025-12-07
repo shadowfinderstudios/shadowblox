@@ -1,1 +1,3 @@
-/data/api_dump.json
+# Removed: /data/api_dump.json
+# The api_dump.json should be tracked so tests have a consistent baseline.
+# Use 'python -m sbxcg api download' to update from Roblox's live API.

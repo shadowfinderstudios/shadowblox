@@ -1,0 +1,48 @@
+{
+  "Classes": [],
+  "Enums": [
+    {
+      "Name": "AccessoryType",
+      "Items": [
+        {"Name": "Unknown", "Value": 0},
+        {"Name": "Hat", "Value": 1},
+        {"Name": "Hair", "Value": 2},
+        {"Name": "Face", "Value": 3},
+        {"Name": "Neck", "Value": 4},
+        {"Name": "Shoulder", "Value": 5},
+        {"Name": "Front", "Value": 6},
+        {"Name": "Back", "Value": 7},
+        {"Name": "Waist", "Value": 8}
+      ]
+    },
+    {
+      "Name": "Axis",
+      "Items": [
+        {"Name": "X", "Value": 0},
+        {"Name": "Y", "Value": 1},
+        {"Name": "Z", "Value": 2}
+      ]
+    },
+    {
+      "Name": "NormalId",
+      "Items": [
+        {"Name": "Top", "Value": 1},
+        {"Name": "Bottom", "Value": 4},
+        {"Name": "Back", "Value": 2},
+        {"Name": "Front", "Value": 5},
+        {"Name": "Right", "Value": 0},
+        {"Name": "Left", "Value": 3}
+      ]
+    },
+    {
+      "Name": "SignalBehavior",
+      "Items": [
+        {"Name": "Default", "Value": 0},
+        {"Name": "Immediate", "Value": 1},
+        {"Name": "Deferred", "Value": 2},
+        {"Name": "AncestryDeferred", "Value": 3}
+      ]
+    }
+  ],
+  "Version": 1
+}
