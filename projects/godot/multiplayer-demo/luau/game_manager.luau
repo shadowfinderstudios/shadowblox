@@ -19,12 +19,21 @@ local CONFIG = {
 local GameState = {
 	taggedPlayerId = 0,
 	tagCooldowns = {},  -- userId -> time remaining
-	isServer = RunService:IsServer(),
-	isClient = RunService:IsClient(),
 }
 
-print("[TagGame] IsServer: " .. tostring(GameState.isServer))
-print("[TagGame] IsClient: " .. tostring(GameState.isClient))
+-- Helper functions to check server/client status dynamically
+-- These must be called each time since the status is set AFTER scripts load
+local function isServer()
+	return RunService:IsServer()
+end
+
+local function isClient()
+	return RunService:IsClient()
+end
+
+-- Debug: will show initial state (may change after Host/Join is pressed)
+print("[TagGame] Initial IsServer: " .. tostring(isServer()))
+print("[TagGame] Initial IsClient: " .. tostring(isClient()))
 
 -- Colors for players
 local COLORS = {
@@ -110,7 +119,7 @@ local function updateStatusText()
 	local playerCount = #Players:GetPlayers()
 	local statusText = ""
 
-	if GameState.isServer then
+	if isServer() then
 		statusText = "Server - " .. playerCount .. " players"
 	else
 		statusText = "Client - " .. playerCount .. " players"
@@ -146,7 +155,7 @@ end
 
 -- Check for tag collisions (server only)
 local function checkTagCollisions()
-	if not GameState.isServer then return end
+	if not isServer() then return end
 	if GameState.taggedPlayerId == 0 then return end
 
 	local taggerId = GameState.taggedPlayerId
@@ -195,7 +204,7 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	end
 
 	-- Server-only logic
-	if GameState.isServer then
+	if isServer() then
 		updateCooldowns(deltaTime)
 		checkTagCollisions()
 	end
@@ -211,7 +220,7 @@ Players.PlayerAdded:Connect(function(player)
 	GameState.tagCooldowns[player.UserId] = 0
 
 	-- If this is server and no one is "it", make first player "it"
-	if GameState.isServer and GameState.taggedPlayerId == 0 then
+	if isServer() and GameState.taggedPlayerId == 0 then
 		local allPlayers = Players:GetPlayers()
 		if #allPlayers >= 1 and allPlayers[1] then
 			tagPlayer(allPlayers[1].UserId)
@@ -246,7 +255,7 @@ Players.PlayerRemoving:Connect(function(player)
 	GameState.tagCooldowns[player.UserId] = nil
 
 	-- If the tagged player left, assign a new one
-	if GameState.isServer and GameState.taggedPlayerId == player.UserId then
+	if isServer() and GameState.taggedPlayerId == player.UserId then
 		GameState.taggedPlayerId = 0
 		local remainingPlayers = Players:GetPlayers()
 		for _, p in ipairs(remainingPlayers) do

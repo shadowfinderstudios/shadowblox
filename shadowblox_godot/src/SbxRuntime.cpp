@@ -121,6 +121,12 @@ void SbxRuntime::setup_data_model() {
 	lua_State *L = runtime->GetVM(SBX::UserVM);
 	SBX::Bridge::RegisterGlobals(L, dataModel);
 
+	// Start RunService so Heartbeat/Stepped signals fire
+	auto runService = get_run_service();
+	if (runService) {
+		runService->Run();
+	}
+
 	godot::UtilityFunctions::print("[SbxRuntime] DataModel created - game, workspace, Players available");
 }
 
@@ -276,13 +282,8 @@ void SbxRuntime::set_is_client(bool is_client) {
 void SbxRuntime::create_player(int64_t user_id, const godot::String &display_name) {
 	auto players = get_players();
 	if (players) {
-		// Create a new player (for server-side multiplayer)
-		auto player = std::make_shared<SBX::Classes::Player>();
-		player->SetSelf(player);
-		player->SetUserId(user_id);
-		player->SetDisplayName(display_name.utf8().get_data());
-		player->SetParent(players->GetSelf());
-
+		// Use AddPlayer which properly adds to playersByUserId and fires PlayerAdded signal
+		players->AddPlayer(user_id, display_name.utf8().get_data());
 		godot::UtilityFunctions::print("[SbxRuntime] Created player: ", display_name, " (ID: ", user_id, ")");
 	}
 }

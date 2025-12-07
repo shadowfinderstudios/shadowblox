@@ -100,6 +100,29 @@ std::shared_ptr<Player> Players::CreateLocalPlayer(int64_t userId, const char *d
 	return player;
 }
 
+std::shared_ptr<Player> Players::AddPlayer(int64_t userId, const char *displayName) {
+	// Check if player already exists
+	auto it = playersByUserId.find(userId);
+	if (it != playersByUserId.end()) {
+		auto existing = it->second.lock();
+		if (existing) {
+			return existing;
+		}
+	}
+
+	auto player = std::make_shared<Player>();
+	player->SetSelf(player);
+	player->SetUserId(userId);
+	player->SetDisplayName(displayName);
+	player->SetParent(GetSelf());
+
+	playersByUserId[userId] = player;
+
+	Emit<Players>("PlayerAdded", player);
+
+	return player;
+}
+
 void Players::RemovePlayer(std::shared_ptr<Player> player) {
 	if (!player) {
 		return;

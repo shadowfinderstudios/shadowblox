@@ -58,6 +58,9 @@ public:
 	// Create and add a player (typically called by game engine)
 	std::shared_ptr<Player> CreateLocalPlayer(int64_t userId, const char *displayName);
 
+	// Add a remote player (server creating player for a connected client)
+	std::shared_ptr<Player> AddPlayer(int64_t userId, const char *displayName);
+
 	// Remove a player
 	void RemovePlayer(std::shared_ptr<Player> player);
 
