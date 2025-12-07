@@ -33,6 +33,15 @@ class RunService;
 class Player;
 class Players;
 class Script;
+class Humanoid;
+class SpawnLocation;
+class RemoteEvent;
+class RemoteFunction;
+class StringValue;
+class IntValue;
+class NumberValue;
+class BoolValue;
+class ObjectValue;
 }
 
 namespace SBX::DataTypes {
@@ -116,5 +125,58 @@ const char *Script_GetSource(Classes::Script *script);
 
 // Set the 'script' global for running scripts
 void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script);
+
+// Humanoid functions
+std::shared_ptr<Classes::Humanoid> CreateHumanoid();
+double Humanoid_GetHealth(Classes::Humanoid *humanoid);
+void Humanoid_SetHealth(Classes::Humanoid *humanoid, double health);
+double Humanoid_GetMaxHealth(Classes::Humanoid *humanoid);
+void Humanoid_SetMaxHealth(Classes::Humanoid *humanoid, double maxHealth);
+double Humanoid_GetWalkSpeed(Classes::Humanoid *humanoid);
+void Humanoid_SetWalkSpeed(Classes::Humanoid *humanoid, double walkSpeed);
+void Humanoid_TakeDamage(Classes::Humanoid *humanoid, double amount);
+
+// SpawnLocation functions
+std::shared_ptr<Classes::SpawnLocation> CreateSpawnLocation();
+bool SpawnLocation_GetEnabled(Classes::SpawnLocation *spawnLocation);
+void SpawnLocation_SetEnabled(Classes::SpawnLocation *spawnLocation, bool enabled);
+bool SpawnLocation_GetNeutral(Classes::SpawnLocation *spawnLocation);
+void SpawnLocation_SetNeutral(Classes::SpawnLocation *spawnLocation, bool neutral);
+
+// RemoteEvent functions
+std::shared_ptr<Classes::RemoteEvent> CreateRemoteEvent();
+
+// RemoteFunction functions
+std::shared_ptr<Classes::RemoteFunction> CreateRemoteFunction();
+
+// Value classes
+std::shared_ptr<Classes::StringValue> CreateStringValue();
+const char *StringValue_GetValue(Classes::StringValue *stringValue);
+void StringValue_SetValue(Classes::StringValue *stringValue, const char *value);
+
+std::shared_ptr<Classes::IntValue> CreateIntValue();
+int64_t IntValue_GetValue(Classes::IntValue *intValue);
+void IntValue_SetValue(Classes::IntValue *intValue, int64_t value);
+
+std::shared_ptr<Classes::NumberValue> CreateNumberValue();
+double NumberValue_GetValue(Classes::NumberValue *numberValue);
+void NumberValue_SetValue(Classes::NumberValue *numberValue, double value);
+
+std::shared_ptr<Classes::BoolValue> CreateBoolValue();
+bool BoolValue_GetValue(Classes::BoolValue *boolValue);
+void BoolValue_SetValue(Classes::BoolValue *boolValue, bool value);
+
+std::shared_ptr<Classes::ObjectValue> CreateObjectValue();
+
+// Network event callback registration
+using NetworkEventCallback = void (*)(const char *eventName, int64_t targetId, const uint8_t *data, size_t dataSize);
+void SetNetworkEventCallback(NetworkEventCallback callback);
+
+// Network function callback registration
+using NetworkFunctionCallback = void (*)(const char *functionName, int64_t targetId, const uint8_t *data, size_t dataSize, uint8_t **response, size_t *responseSize);
+void SetNetworkFunctionCallback(NetworkFunctionCallback callback);
+
+// Process incoming network events
+void ProcessNetworkEvent(const char *eventName, int64_t senderId, const uint8_t *data, size_t dataSize, lua_State *L, std::shared_ptr<Classes::Player> sender);
 
 } // namespace SBX::Bridge

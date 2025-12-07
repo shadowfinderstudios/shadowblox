@@ -21,6 +21,7 @@
 
 #include "Sbx/Classes/ClassDB.hpp"
 #include "Sbx/Classes/Players.hpp"
+#include "Sbx/Classes/ReplicatedStorage.hpp"
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Workspace.hpp"
 #include "Sbx/Runtime/Stack.hpp"
@@ -76,6 +77,11 @@ std::shared_ptr<Instance> DataModel::GetService(const char *className) {
 		ps->SetSelf(ps);
 		ps->SetParent(GetSelf());
 		service = ps;
+	} else if (std::strcmp(className, "ReplicatedStorage") == 0) {
+		auto rs = std::make_shared<ReplicatedStorage>();
+		rs->SetSelf(rs);
+		rs->SetParent(GetSelf());
+		service = rs;
 	} else {
 		// Generic service creation would go here
 		return nullptr;

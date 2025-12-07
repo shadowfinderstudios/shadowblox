@@ -53,8 +53,13 @@ void LuauRuntime::InitVM(lua_State *L, bool debug) {
 		initCallback(L);
 	}
 
-	// Seal main global state
-	luaL_sandbox(L);
+	// NOTE: Main VM is NOT sandboxed because:
+	// 1. It serves as a template that holds global environment (game, workspace, etc.)
+	// 2. Globals are registered after init via RegisterGlobals()
+	// 3. Script execution creates threads via lua_newthread() which inherit these globals
+	// 4. Those threads ARE sandboxed via luaL_sandboxthread() in execute_script()
+	// This is the proper Roblox-like architecture where the main state is a container
+	// and individual script threads are sandboxed.
 }
 
 lua_State *LuauRuntime::GetVM(VMType type) {

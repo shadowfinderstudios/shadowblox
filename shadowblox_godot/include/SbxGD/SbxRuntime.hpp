@@ -21,6 +21,7 @@
 
 namespace SBX {
 class LuauRuntime;
+class Logger;
 }
 
 namespace SBX::Classes {
@@ -31,6 +32,8 @@ class Player;
 class RunService;
 class Script;
 class Instance;
+class RemoteEvent;
+class RemoteFunction;
 }
 
 namespace SbxGD {
@@ -49,6 +52,7 @@ public:
 	// Godot lifecycle
 	void _ready() override;
 	void _process(double delta) override;
+	void _exit_tree() override;
 
 	// Runtime access
 	SBX::LuauRuntime *get_runtime() const { return runtime.get(); }
@@ -79,14 +83,49 @@ public:
 	// Singleton access
 	static SbxRuntime *get_singleton() { return singleton; }
 
+	// Multiplayer support
+	void set_is_server(bool is_server);
+	bool get_is_server() const { return isServer; }
+	void set_is_client(bool is_client);
+	bool get_is_client() const { return isClient; }
+
+	// Create a player (server-side)
+	void create_player(int64_t user_id, const godot::String &display_name);
+
+	// Remove a player (server-side)
+	void remove_player(int64_t user_id);
+
+	// Get player by user ID
+	std::shared_ptr<SBX::Classes::Player> get_player(int64_t user_id) const;
+
+	// Network event handling
+	void on_network_event(const godot::String &event_name, int64_t sender_id, const godot::PackedByteArray &data);
+	void on_network_function(const godot::String &function_name, int64_t sender_id, const godot::PackedByteArray &data, godot::PackedByteArray &response);
+
+	// Load character for a player
+	void load_character(int64_t user_id);
+
+	// Input/Position bridging for GDScript integration
+	void set_input_direction(int64_t user_id, godot::Vector3 direction);
+	godot::Vector3 get_player_position(int64_t user_id) const;
+	void set_player_position(int64_t user_id, godot::Vector3 position);
+	godot::Dictionary get_all_player_positions() const;
+
+	// Generic rendering control - Luau tells GDScript what to render
+	void set_player_color(int64_t user_id, godot::Color color);
+	void set_status_text(const godot::String &text);
+
 protected:
 	static void _bind_methods();
 
 private:
 	std::unique_ptr<SBX::LuauRuntime> runtime;
+	std::unique_ptr<SBX::Logger> logger;
 	std::shared_ptr<SBX::Classes::DataModel> dataModel;
 	bool initialized = false;
 	double elapsedTime = 0.0;
+	bool isServer = true;
+	bool isClient = false;
 
 	static SbxRuntime *singleton;
 

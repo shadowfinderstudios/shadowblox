@@ -20,6 +20,7 @@
 #include "Sbx/DataTypes/EnumItem.hpp"
 #include "Sbx/DataTypes/EnumTypes.gen.hpp"
 #include "Sbx/DataTypes/Enums.hpp"
+#include "Sbx/DataTypes/Color3.hpp"
 #include "Sbx/DataTypes/RBXScriptConnection.hpp"
 #include "Sbx/DataTypes/RBXScriptSignal.hpp"
 #include "Sbx/DataTypes/Vector3.hpp"
@@ -37,6 +38,7 @@ void luaSBX_opendatatypes(lua_State *L) {
 	RBXScriptConnection::Register(L);
 
 	Vector3::Register(L);
+	Color3::Register(L);
 }
 
 } //namespace SBX::DataTypes

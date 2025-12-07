@@ -18,14 +18,20 @@
 
 #include "Sbx/Classes/ClassDB.hpp"
 #include "Sbx/Classes/DataModel.hpp"
+#include "Sbx/Classes/Humanoid.hpp"
 #include "Sbx/Classes/Instance.hpp"
 #include "Sbx/Classes/Model.hpp"
 #include "Sbx/Classes/Object.hpp"
 #include "Sbx/Classes/Part.hpp"
 #include "Sbx/Classes/Player.hpp"
 #include "Sbx/Classes/Players.hpp"
+#include "Sbx/Classes/RemoteEvent.hpp"
+#include "Sbx/Classes/RemoteFunction.hpp"
+#include "Sbx/Classes/ReplicatedStorage.hpp"
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Script.hpp"
+#include "Sbx/Classes/SpawnLocation.hpp"
+#include "Sbx/Classes/ValueBase.hpp"
 #include "Sbx/Classes/Workspace.hpp"
 #include "Sbx/DataTypes/Types.hpp"
 #include "Sbx/DataTypes/Vector3.hpp"
@@ -46,6 +52,17 @@ void InitializeAllClasses() {
 	Classes::Script::InitializeClass();
 	Classes::LocalScript::InitializeClass();
 	Classes::ModuleScript::InitializeClass();
+	Classes::Humanoid::InitializeClass();
+	Classes::SpawnLocation::InitializeClass();
+	Classes::RemoteEvent::InitializeClass();
+	Classes::RemoteFunction::InitializeClass();
+	Classes::ReplicatedStorage::InitializeClass();
+	Classes::ValueBase::InitializeClass();
+	Classes::StringValue::InitializeClass();
+	Classes::IntValue::InitializeClass();
+	Classes::NumberValue::InitializeClass();
+	Classes::BoolValue::InitializeClass();
+	Classes::ObjectValue::InitializeClass();
 }
 
 void RegisterAllClasses(lua_State *L) {
@@ -330,14 +347,41 @@ void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script)
 	lua_setglobal(L, "script");
 }
 
+// Instance.new(className) - creates a new instance of the given class
+static int luaSBX_instance_new(lua_State *L) {
+	const char *className = luaL_checkstring(L, 1);
+
+	auto obj = Classes::ClassDB::New(className);
+	if (!obj) {
+		luaL_error(L, "Unable to create an Instance of type '%s'", className);
+		return 0;
+	}
+
+	// Cast to Instance and set self-reference
+	auto instance = std::dynamic_pointer_cast<Classes::Instance>(obj);
+	if (instance) {
+		instance->SetSelf(instance);
+		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, instance);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 // Register game/workspace globals
 void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel) {
 	if (!L || !dataModel) return;
 
-	// Ensure services are created
+	// Ensure core services are created
 	auto workspace = dataModel->GetWorkspace();
 	dataModel->GetRunService();
 	dataModel->GetService("Players");
+
+	// Create Instance table with new() function
+	lua_newtable(L);
+	lua_pushcfunction(L, luaSBX_instance_new, "Instance.new");
+	lua_setfield(L, -2, "new");
+	lua_setglobal(L, "Instance");
 
 	// Push game (DataModel) global
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);
@@ -356,6 +400,198 @@ void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel
 		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, workspace);
 		lua_setglobal(L, "Workspace");
 	}
+}
+
+// Humanoid functions
+std::shared_ptr<Classes::Humanoid> CreateHumanoid() {
+	auto humanoid = std::make_shared<Classes::Humanoid>();
+	humanoid->SetSelf(humanoid);
+	return humanoid;
+}
+
+double Humanoid_GetHealth(Classes::Humanoid *humanoid) {
+	if (!humanoid) return 0.0;
+	return humanoid->GetHealth();
+}
+
+void Humanoid_SetHealth(Classes::Humanoid *humanoid, double health) {
+	if (humanoid) humanoid->SetHealth(health);
+}
+
+double Humanoid_GetMaxHealth(Classes::Humanoid *humanoid) {
+	if (!humanoid) return 100.0;
+	return humanoid->GetMaxHealth();
+}
+
+void Humanoid_SetMaxHealth(Classes::Humanoid *humanoid, double maxHealth) {
+	if (humanoid) humanoid->SetMaxHealth(maxHealth);
+}
+
+double Humanoid_GetWalkSpeed(Classes::Humanoid *humanoid) {
+	if (!humanoid) return 16.0;
+	return humanoid->GetWalkSpeed();
+}
+
+void Humanoid_SetWalkSpeed(Classes::Humanoid *humanoid, double walkSpeed) {
+	if (humanoid) humanoid->SetWalkSpeed(walkSpeed);
+}
+
+void Humanoid_TakeDamage(Classes::Humanoid *humanoid, double amount) {
+	if (humanoid) humanoid->TakeDamage(amount);
+}
+
+// SpawnLocation functions
+std::shared_ptr<Classes::SpawnLocation> CreateSpawnLocation() {
+	auto spawnLocation = std::make_shared<Classes::SpawnLocation>();
+	spawnLocation->SetSelf(spawnLocation);
+	return spawnLocation;
+}
+
+bool SpawnLocation_GetEnabled(Classes::SpawnLocation *spawnLocation) {
+	if (!spawnLocation) return false;
+	return spawnLocation->GetEnabled();
+}
+
+void SpawnLocation_SetEnabled(Classes::SpawnLocation *spawnLocation, bool enabled) {
+	if (spawnLocation) spawnLocation->SetEnabled(enabled);
+}
+
+bool SpawnLocation_GetNeutral(Classes::SpawnLocation *spawnLocation) {
+	if (!spawnLocation) return false;
+	return spawnLocation->GetNeutral();
+}
+
+void SpawnLocation_SetNeutral(Classes::SpawnLocation *spawnLocation, bool neutral) {
+	if (spawnLocation) spawnLocation->SetNeutral(neutral);
+}
+
+// RemoteEvent functions
+std::shared_ptr<Classes::RemoteEvent> CreateRemoteEvent() {
+	auto remoteEvent = std::make_shared<Classes::RemoteEvent>();
+	remoteEvent->SetSelf(remoteEvent);
+	return remoteEvent;
+}
+
+// RemoteFunction functions
+std::shared_ptr<Classes::RemoteFunction> CreateRemoteFunction() {
+	auto remoteFunction = std::make_shared<Classes::RemoteFunction>();
+	remoteFunction->SetSelf(remoteFunction);
+	return remoteFunction;
+}
+
+// Value classes
+std::shared_ptr<Classes::StringValue> CreateStringValue() {
+	auto stringValue = std::make_shared<Classes::StringValue>();
+	stringValue->SetSelf(stringValue);
+	return stringValue;
+}
+
+const char *StringValue_GetValue(Classes::StringValue *stringValue) {
+	if (!stringValue) return "";
+	return stringValue->GetValue();
+}
+
+void StringValue_SetValue(Classes::StringValue *stringValue, const char *value) {
+	if (stringValue) stringValue->SetValue(value);
+}
+
+std::shared_ptr<Classes::IntValue> CreateIntValue() {
+	auto intValue = std::make_shared<Classes::IntValue>();
+	intValue->SetSelf(intValue);
+	return intValue;
+}
+
+int64_t IntValue_GetValue(Classes::IntValue *intValue) {
+	if (!intValue) return 0;
+	return intValue->GetValue();
+}
+
+void IntValue_SetValue(Classes::IntValue *intValue, int64_t value) {
+	if (intValue) intValue->SetValue(value);
+}
+
+std::shared_ptr<Classes::NumberValue> CreateNumberValue() {
+	auto numberValue = std::make_shared<Classes::NumberValue>();
+	numberValue->SetSelf(numberValue);
+	return numberValue;
+}
+
+double NumberValue_GetValue(Classes::NumberValue *numberValue) {
+	if (!numberValue) return 0.0;
+	return numberValue->GetValue();
+}
+
+void NumberValue_SetValue(Classes::NumberValue *numberValue, double value) {
+	if (numberValue) numberValue->SetValue(value);
+}
+
+std::shared_ptr<Classes::BoolValue> CreateBoolValue() {
+	auto boolValue = std::make_shared<Classes::BoolValue>();
+	boolValue->SetSelf(boolValue);
+	return boolValue;
+}
+
+bool BoolValue_GetValue(Classes::BoolValue *boolValue) {
+	if (!boolValue) return false;
+	return boolValue->GetValue();
+}
+
+void BoolValue_SetValue(Classes::BoolValue *boolValue, bool value) {
+	if (boolValue) boolValue->SetValue(value);
+}
+
+std::shared_ptr<Classes::ObjectValue> CreateObjectValue() {
+	auto objectValue = std::make_shared<Classes::ObjectValue>();
+	objectValue->SetSelf(objectValue);
+	return objectValue;
+}
+
+// Network callback handling
+static NetworkEventCallback g_networkEventCallback = nullptr;
+static NetworkFunctionCallback g_networkFunctionCallback = nullptr;
+
+void SetNetworkEventCallback(NetworkEventCallback callback) {
+	g_networkEventCallback = callback;
+
+	// Also set the callback on RemoteEvent class
+	if (callback) {
+		Classes::RemoteEvent::SetNetworkCallback([](const char *eventName, int64_t targetId, const std::vector<uint8_t> &data) {
+			if (g_networkEventCallback) {
+				g_networkEventCallback(eventName, targetId, data.data(), data.size());
+			}
+		});
+	} else {
+		Classes::RemoteEvent::SetNetworkCallback(nullptr);
+	}
+}
+
+void SetNetworkFunctionCallback(NetworkFunctionCallback callback) {
+	g_networkFunctionCallback = callback;
+
+	// Also set the callback on RemoteFunction class
+	if (callback) {
+		Classes::RemoteFunction::SetNetworkCallback([](const char *functionName, int64_t targetId, const std::vector<uint8_t> &data) -> std::vector<uint8_t> {
+			if (g_networkFunctionCallback) {
+				uint8_t *response = nullptr;
+				size_t responseSize = 0;
+				g_networkFunctionCallback(functionName, targetId, data.data(), data.size(), &response, &responseSize);
+				if (response && responseSize > 0) {
+					std::vector<uint8_t> result(response, response + responseSize);
+					// Caller is responsible for freeing response
+					return result;
+				}
+			}
+			return {};
+		});
+	} else {
+		Classes::RemoteFunction::SetNetworkCallback(nullptr);
+	}
+}
+
+void ProcessNetworkEvent(const char *eventName, int64_t senderId, const uint8_t *data, size_t dataSize, lua_State *L, std::shared_ptr<Classes::Player> sender) {
+	// This function processes an incoming network event
+	// Find the RemoteEvent by name and trigger the appropriate signal
+	// For now, this is a placeholder - the actual implementation would search the DataModel
 }
 
 } // namespace SBX::Bridge

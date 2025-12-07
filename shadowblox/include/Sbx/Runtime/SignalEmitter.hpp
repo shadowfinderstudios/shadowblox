@@ -58,6 +58,11 @@ public:
 	SignalEmitter &operator=(const SignalEmitter &other) = delete;
 	SignalEmitter &operator=(SignalEmitter &&other) = delete;
 
+	// Shutdown mode - when true, all signal operations are skipped
+	// This prevents crashes when Luau runtime has been destroyed
+	static void SetShutdownMode(bool shutdown);
+	static bool IsShutdownMode();
+
 	void SetDeferred(bool isDeferred);
 
 	uint64_t Connect(const std::string &signal, lua_State *L, bool once);
@@ -69,6 +74,11 @@ public:
 
 	template <typename... Args>
 	void Emit(std::string_view className, std::string_view signal, Args... args) {
+		// Skip all signal emission during shutdown to prevent crashes
+		if (shutdownMode) {
+			return;
+		}
+
 		std::vector<uint64_t> toRemove;
 
 		auto entry = connections.find(signal);
@@ -160,6 +170,8 @@ private:
 		int ref;
 		bool once;
 	};
+
+	static bool shutdownMode;
 
 	bool deferred = false;
 	uint64_t nextId = 0;

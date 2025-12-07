@@ -27,6 +27,17 @@
 
 namespace SBX {
 
+// Static member definition
+bool SignalEmitter::shutdownMode = false;
+
+void SignalEmitter::SetShutdownMode(bool shutdown) {
+	shutdownMode = shutdown;
+}
+
+bool SignalEmitter::IsShutdownMode() {
+	return shutdownMode;
+}
+
 void luaSBX_reentrancyerror(lua_State *L, const char *signalName) {
 	SbxThreadData *udata = luaSBX_getthreaddata(L);
 	if (!udata->global->logger) {
@@ -47,6 +58,13 @@ void luaSBX_reentrancyerror(lua_State *L, const char *signalName) {
 SignalEmitter::SignalEmitter() {}
 
 SignalEmitter::~SignalEmitter() {
+	// During shutdown, Luau runtime is destroyed so skip all Lua operations
+	if (shutdownMode) {
+		connections.clear();
+		pendingTasks.clear();
+		return;
+	}
+
 	for (const auto &[connName, conns] : connections) {
 		for (const auto &[id, conn] : conns) {
 			SbxThreadData *udata = luaSBX_getthreaddata(conn.L);
