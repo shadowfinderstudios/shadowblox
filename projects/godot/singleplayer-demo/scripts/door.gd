@@ -4,6 +4,7 @@ class_name PuzzleDoor
 ## A door that can be opened with a key or by puzzle completion
 
 @export var required_key: String = ""
+@export var starts_locked: bool = true
 @export var open_speed: float = 2.0
 @export var open_offset: Vector3 = Vector3(0, 3, 0)
 
@@ -20,9 +21,7 @@ signal door_opened
 func _ready() -> void:
 	start_position = position
 	target_position = start_position
-	# If no key required, door starts unlocked
-	if required_key.is_empty():
-		is_locked = false
+	is_locked = starts_locked
 
 func _process(delta: float) -> void:
 	if position.distance_to(target_position) > 0.01:
