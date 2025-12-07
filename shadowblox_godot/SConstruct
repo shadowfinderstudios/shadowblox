@@ -1,18 +1,28 @@
 # -*- mode: python -*-
 # SConstruct for shadowblox GDExtension
-# Run: scons platform=<platform> target=<target> use_llvm=yes
+# Run: scons platform=<platform> target=<target>
 
 import os
 import subprocess
 import sys
 
+# Detect platform
+platform = ARGUMENTS.get("platform", "")
+is_windows = platform == "windows" or (platform == "" and sys.platform == "win32")
+
 # Build the shadowblox library first
 print("Building shadowblox library...")
-subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4"], check=True)
+if is_windows:
+    # Use MSVC on Windows
+    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4", "toolchain=msvc"], check=True)
+else:
+    # Use clang on other platforms
+    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4"], check=True)
 
-# Force use of clang/llvm for compatibility with shadowblox
-# The use_llvm option must be set before invoking godot-cpp's SConstruct
-ARGUMENTS["use_llvm"] = "yes"
+# Set compiler options for godot-cpp
+if not is_windows:
+    # Use clang/llvm on non-Windows platforms
+    ARGUMENTS["use_llvm"] = "yes"
 
 # Now build the GDExtension
 env = SConscript("../extern/godot-cpp/SConstruct")
@@ -34,9 +44,12 @@ sources = Glob("src/*.cpp")
 
 # Link shadowblox and luau libraries
 env.Append(LIBPATH=["../shadowblox/"])
-env.Append(LIBS=["shadowblox"])
 env.Append(LIBPATH=["../extern/"])
-env.Append(LIBS=["luau"])
+if env["platform"] == "windows":
+    # MSVC uses .lib files
+    env.Append(LIBS=["shadowblox.lib", "luau.lib"])
+else:
+    env.Append(LIBS=["shadowblox", "luau"])
 
 # Add include paths (both include and src directories for Luau)
 env.Append(CPPPATH=[
