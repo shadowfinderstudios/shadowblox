@@ -21,6 +21,7 @@
 
 namespace SBX {
 class LuauRuntime;
+class Logger;
 }
 
 namespace SBX::Classes {
@@ -108,6 +109,7 @@ protected:
 
 private:
 	std::unique_ptr<SBX::LuauRuntime> runtime;
+	std::unique_ptr<SBX::Logger> logger;
 	std::shared_ptr<SBX::Classes::DataModel> dataModel;
 	bool initialized = false;
 	double elapsedTime = 0.0;

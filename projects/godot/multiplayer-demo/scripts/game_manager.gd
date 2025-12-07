@@ -19,6 +19,8 @@ var sbx_available := false
 var local_player_node: Node3D = null
 var player_nodes := {}  # user_id -> Node3D
 var game_started := false
+var tagged_player_id: int = 0  # Who is "it" - 0 means no one yet
+var tag_cooldown := 0.0  # Prevent instant tag-back
 
 func _ready() -> void:
 	# Connect network manager signals
@@ -141,6 +143,10 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 	_update_player_list()
 	_update_status()
 
+	# Start game when we have 2+ players (server starts it)
+	if NetworkManager.is_server and player_nodes.size() >= 2 and tagged_player_id == 0:
+		_start_game()
+
 func _on_existing_player(user_id: int, display_name: String) -> void:
 	# Called on client when receiving info about players already in the game
 	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
@@ -215,6 +221,11 @@ func _process(delta: float) -> void:
 		_handle_input(delta)
 		# Send our position to the server/clients
 		_send_position_update()
+		# Check for tagging (only if we're "it" and cooldown expired)
+		if tag_cooldown > 0:
+			tag_cooldown -= delta
+		else:
+			_check_for_tag()
 
 	# Sync player positions from shadowblox (simplified for demo)
 	_sync_player_positions()
@@ -241,8 +252,7 @@ func _handle_input(delta: float) -> void:
 		local_player_node.position.z = clamp(local_player_node.position.z, -20, 20)
 
 var _last_sent_position := Vector3.ZERO
-var _position_send_timer := 0.0
-const POSITION_SEND_INTERVAL := 0.05  # 20 updates per second
+const TAG_DISTANCE := 1.5  # Distance at which players can tag each other
 
 func _send_position_update() -> void:
 	if not local_player_node:
@@ -298,10 +308,16 @@ func _update_player_list() -> void:
 
 func _update_status() -> void:
 	var player_count = player_nodes.size()
+	var it_text = ""
+	if tagged_player_id == NetworkManager.local_player_id:
+		it_text = " - YOU'RE IT!"
+	elif tagged_player_id > 0:
+		it_text = " - " + str(tagged_player_id) + " is IT"
+
 	if NetworkManager.is_server:
-		status_label.text = "Server - " + str(player_count) + " players"
+		status_label.text = "Server - " + str(player_count) + " players" + it_text
 	else:
-		status_label.text = "Client - " + str(player_count) + " players"
+		status_label.text = "Client - " + str(player_count) + " players" + it_text
 
 func _cleanup_game() -> void:
 	for user_id in player_nodes:
@@ -309,3 +325,95 @@ func _cleanup_game() -> void:
 	player_nodes.clear()
 	local_player_node = null
 	game_started = false
+	tagged_player_id = 0
+
+# === TAGGING LOGIC ===
+
+func _check_for_tag() -> void:
+	# Only check if we're "it"
+	if tagged_player_id != NetworkManager.local_player_id:
+		return
+
+	if not local_player_node:
+		return
+
+	var my_pos = local_player_node.position
+	for user_id in player_nodes:
+		if user_id == NetworkManager.local_player_id:
+			continue  # Don't tag ourselves
+
+		var other_node = player_nodes[user_id]
+		var distance = my_pos.distance_to(other_node.position)
+
+		if distance < TAG_DISTANCE:
+			# Tag them!
+			_tag_player(user_id)
+			break
+
+func _tag_player(new_tagged_id: int) -> void:
+	print("[GameManager] Tagged player: ", new_tagged_id)
+
+	# Set cooldown to prevent instant tag-back
+	tag_cooldown = 1.0
+
+	if NetworkManager.is_server:
+		# Server: update locally and broadcast to all
+		_set_tagged_player(new_tagged_id)
+		_sync_tagged_player.rpc(new_tagged_id)
+	else:
+		# Client: request server to update
+		_request_tag.rpc_id(1, new_tagged_id)
+
+@rpc("any_peer", "reliable")
+func _request_tag(new_tagged_id: int) -> void:
+	if not NetworkManager.is_server:
+		return
+	# Server validates and broadcasts
+	_set_tagged_player(new_tagged_id)
+	_sync_tagged_player.rpc(new_tagged_id)
+
+@rpc("authority", "reliable", "call_local")
+func _sync_tagged_player(new_tagged_id: int) -> void:
+	_set_tagged_player(new_tagged_id)
+
+func _set_tagged_player(new_tagged_id: int) -> void:
+	var old_tagged = tagged_player_id
+	tagged_player_id = new_tagged_id
+
+	# Set cooldown if we just got tagged
+	if new_tagged_id == NetworkManager.local_player_id:
+		tag_cooldown = 1.0
+
+	# Update player colors
+	_update_player_color(old_tagged)
+	_update_player_color(new_tagged_id)
+	_update_status()
+
+func _update_player_color(user_id: int) -> void:
+	if not player_nodes.has(user_id):
+		return
+
+	var player_node = player_nodes[user_id]
+	var body = player_node.get_node_or_null("Body")
+	if not body:
+		return
+
+	var material = body.material_override as StandardMaterial3D
+	if not material:
+		return
+
+	var is_local = (user_id == NetworkManager.local_player_id)
+	var is_it = (user_id == tagged_player_id)
+
+	if is_it:
+		material.albedo_color = Color.RED  # "It" is red
+	elif is_local:
+		material.albedo_color = Color.GREEN  # Local player is green
+	else:
+		material.albedo_color = Color.BLUE  # Other players are blue
+
+func _start_game() -> void:
+	# Make the host "it" first
+	if NetworkManager.is_server:
+		_set_tagged_player(1)  # Host is always ID 1
+		_sync_tagged_player.rpc(1)

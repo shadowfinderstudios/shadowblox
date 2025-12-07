@@ -37,6 +37,7 @@
 #include "Sbx/GodotBridge.hpp"
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/LuauRuntime.hpp"
+#include "Sbx/Runtime/Logger.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
 namespace SbxGD {
@@ -90,6 +91,18 @@ void SbxRuntime::initialize_runtime() {
 
 	// Create the Luau runtime
 	runtime = std::make_unique<SBX::LuauRuntime>(runtime_init_callback);
+
+	// Create logger for print/warn to work in Luau scripts
+	logger = std::make_unique<SBX::Logger>();
+
+	// Set the logger in both VMs' thread data
+	for (int i = 0; i < SBX::VMMax; i++) {
+		lua_State *L = runtime->GetVM(SBX::VMType(i));
+		SBX::SbxThreadData *udata = SBX::luaSBX_getthreaddata(L);
+		if (udata && udata->global) {
+			udata->global->logger = logger.get();
+		}
+	}
 
 	initialized = true;
 	godot::UtilityFunctions::print("[SbxRuntime] Luau runtime initialized");
