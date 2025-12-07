@@ -1,0 +1,9 @@
+[configuration]
+
+entry_symbol = "shadowbloxgdInit"
+compatibility_minimum = 4.1
+
+[libraries]
+
+linux.debug.x86_64 = "res://bin/shadowblox/libshadowbloxgd.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "res://bin/shadowblox/libshadowbloxgd.linux.template_debug.x86_64.so"

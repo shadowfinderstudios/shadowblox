@@ -1,0 +1,155 @@
+[gd_scene load_steps=2 format=3 uid="uid://cg5mvp2w8xqrh"]
+
+[ext_resource type="Script" path="res://scripts/game_ui.gd" id="1_ui"]
+
+[node name="GameUI" type="CanvasLayer"]
+script = ExtResource("1_ui")
+
+[node name="MessagePanel" type="Panel" parent="."]
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_top = 20.0
+offset_right = 200.0
+offset_bottom = 70.0
+grow_horizontal = 2
+
+[node name="MessageLabel" type="Label" parent="MessagePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Welcome to the Escape Room!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="InventoryPanel" type="Panel" parent="."]
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -60.0
+offset_right = 210.0
+offset_bottom = -10.0
+grow_vertical = 0
+
+[node name="InventoryLabel" type="Label" parent="InventoryPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Keys: None"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="CrosshairPanel" type="Panel" parent="."]
+self_modulate = Color(1, 1, 1, 0.5)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -2.0
+offset_top = -2.0
+offset_right = 2.0
+offset_bottom = 2.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="HintLabel" type="Label" parent="."]
+anchors_preset = 7
+anchor_left = 0.5
+anchor_top = 1.0
+anchor_right = 0.5
+anchor_bottom = 1.0
+offset_left = -150.0
+offset_top = -90.0
+offset_right = 150.0
+offset_bottom = -70.0
+grow_horizontal = 2
+grow_vertical = 0
+text = "E - Interact | ESC - Pause"
+horizontal_alignment = 1
+
+[node name="CodePanel" type="Panel" parent="."]
+visible = false
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -150.0
+offset_top = -100.0
+offset_right = 150.0
+offset_bottom = 100.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CodePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TitleLabel" type="Label" parent="CodePanel/VBoxContainer"]
+layout_mode = 2
+text = "Enter Code:"
+horizontal_alignment = 1
+
+[node name="CodeInput" type="LineEdit" parent="CodePanel/VBoxContainer"]
+layout_mode = 2
+placeholder_text = "****"
+alignment = 1
+max_length = 4
+
+[node name="ButtonContainer" type="HBoxContainer" parent="CodePanel/VBoxContainer"]
+layout_mode = 2
+alignment = 1
+
+[node name="SubmitButton" type="Button" parent="CodePanel/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+text = "Submit"
+
+[node name="CancelButton" type="Button" parent="CodePanel/VBoxContainer/ButtonContainer"]
+layout_mode = 2
+text = "Cancel"
+
+[node name="WinPanel" type="Panel" parent="."]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="WinLabel" type="Label" parent="WinPanel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -50.0
+offset_right = 200.0
+offset_bottom = 50.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 48
+text = "You Escaped!"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[connection signal="pressed" from="CodePanel/VBoxContainer/ButtonContainer/SubmitButton" to="." method="_on_submit_pressed"]
+[connection signal="pressed" from="CodePanel/VBoxContainer/ButtonContainer/CancelButton" to="." method="_on_cancel_pressed"]
