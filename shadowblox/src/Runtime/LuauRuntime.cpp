@@ -53,8 +53,10 @@ void LuauRuntime::InitVM(lua_State *L, bool debug) {
 		initCallback(L);
 	}
 
-	// Seal main global state
-	luaL_sandbox(L);
+	// NOTE: Sandboxing disabled to allow setting globals after init
+	// The sandbox freezes the global table, preventing RegisterGlobals from working
+	// TODO: Move RegisterGlobals into initCallback or use luaL_sandboxthread
+	// luaL_sandbox(L);
 }
 
 lua_State *LuauRuntime::GetVM(VMType type) {
