@@ -100,9 +100,11 @@ Export("extern_includes")
 
 luau_lib, luau_includes = SConscript("extern/SCSub_Luau")
 Export(["luau_lib", "luau_includes"])
+Default(luau_lib)
 
 shadowblox_lib, shadowblox_includes = SConscript("shadowblox/SCSub")
 Export(["shadowblox_lib", "shadowblox_includes"])
+Default(shadowblox_lib)
 
 if not env_base["skip_tests"]:
     SConscript("shadowblox_tests/SCSub")
