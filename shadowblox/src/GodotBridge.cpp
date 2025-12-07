@@ -347,6 +347,27 @@ void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script)
 	lua_setglobal(L, "script");
 }
 
+// Instance.new(className) - creates a new instance of the given class
+static int luaSBX_instance_new(lua_State *L) {
+	const char *className = luaL_checkstring(L, 1);
+
+	auto obj = Classes::ClassDB::New(className);
+	if (!obj) {
+		luaL_error(L, "Unable to create an Instance of type '%s'", className);
+		return 0;
+	}
+
+	// Cast to Instance and set self-reference
+	auto instance = std::dynamic_pointer_cast<Classes::Instance>(obj);
+	if (instance) {
+		instance->SetSelf(instance);
+		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, instance);
+	} else {
+		lua_pushnil(L);
+	}
+	return 1;
+}
+
 // Register game/workspace globals
 void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel) {
 	if (!L || !dataModel) return;
@@ -355,6 +376,12 @@ void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel
 	auto workspace = dataModel->GetWorkspace();
 	dataModel->GetRunService();
 	dataModel->GetService("Players");
+
+	// Create Instance table with new() function
+	lua_newtable(L);
+	lua_pushcfunction(L, luaSBX_instance_new, "Instance.new");
+	lua_setfield(L, -2, "new");
+	lua_setglobal(L, "Instance");
 
 	// Push game (DataModel) global
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);

@@ -1,327 +1,247 @@
--- GameManager (ServerScriptService)
--- This is the brain of the Tag game. It manages rounds, infection, and win conditions.
+-- Tag Game Manager - Core game logic in Luau
+-- Manages player movement, tagging, and game state
+-- GDScript handles: rendering, input forwarding, network transport
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Settings
-local MIN_PLAYERS = 2
-local INTERMISSION_TIME = 15
-local ROUND_TIME = 120
+print("[TagGame] Loading game manager...")
+
+-- Game configuration
+local CONFIG = {
+	WALK_SPEED = 5.0,
+	TAG_DISTANCE = 2.0,
+	TAG_COOLDOWN = 1.0,
+	BOUNDS = { min = -20, max = 20 },
+}
 
 -- Game state
-local gameStatus = ReplicatedStorage:WaitForChild("GameStatus")
-local playersInRound = {}
-local infectedPlayers = {}
-local roundActive = false
+local GameState = {
+	taggedPlayerId = 0,
+	tagCooldowns = {},  -- userId -> time remaining
+	isServer = RunService:IsServer(),
+	isClient = RunService:IsClient(),
+}
 
--- Spawn locations
-local lobbySpawn = game.Workspace:WaitForChild("LobbySpawn")
-local arenaSpawn = game.Workspace:WaitForChild("ArenaSpawn")
+print("[TagGame] IsServer: " .. tostring(GameState.isServer))
+print("[TagGame] IsClient: " .. tostring(GameState.isClient))
 
--- Remote events
-local remoteEvents = ReplicatedStorage:WaitForChild("RemoteEvents")
-local infectionEvent = remoteEvents:WaitForChild("InfectionEvent")
-local gameStateEvent = remoteEvents:WaitForChild("GameStateEvent")
-
-----------------------------
--- HELPER FUNCTIONS
-----------------------------
-
-local function setStatus(text)
-	gameStatus.Value = text
-	print("[Game] " .. text)
-	-- Broadcast to all clients
-	gameStateEvent:FireAllClients(text)
+-- Get RemoteEvents folder
+local function getRemoteEvents()
+	local remoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
+	return remoteEvents
 end
 
-local function getAlivePlayers()
-	local alive = {}
-	for _, player in pairs(playersInRound) do
-		if player and player.Character and player.Character:FindFirstChild("Humanoid") then
-			if player.Character.Humanoid.Health > 0 then
-				table.insert(alive, player)
-			end
-		end
-	end
-	return alive
-end
-
-local function getSurvivors()
-	local survivors = {}
-	for _, player in pairs(getAlivePlayers()) do
-		local isInfected = false
-		for _, infected in pairs(infectedPlayers) do
-			if infected == player then
-				isInfected = true
-				break
-			end
-		end
-		if not isInfected then
-			table.insert(survivors, player)
-		end
-	end
-	return survivors
-end
-
-local function teleportPlayer(player, spawnLocation)
-	if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
-		local newPosition = spawnLocation.Position + Vector3.new(0, 5, 0)
-		player.Character.HumanoidRootPart.Position = newPosition
-	end
-end
-
-local function resetPlayer(player)
-	-- In a full implementation, this would respawn the character
-	-- For now, just teleport to lobby
-	teleportPlayer(player, lobbySpawn)
-end
-
-----------------------------
--- INFECTION MECHANICS
-----------------------------
-
-local function makeInfected(player)
-	-- Check if already infected
-	for _, infected in pairs(infectedPlayers) do
-		if infected == player then
-			return
-		end
-	end
-
-	table.insert(infectedPlayers, player)
-
-	local character = player.Character
-	if character then
-		-- Visual: change appearance (in a real game, would change BrickColor)
-		-- Speed boost for infected
-		local humanoid = character:FindFirstChild("Humanoid")
-		if humanoid then
-			humanoid.WalkSpeed = 20  -- faster than normal (16)
-		end
-	end
-
-	print(player.Name .. " is now INFECTED!")
-
-	-- Notify all clients about the infection
-	infectionEvent:FireAllClients(player)
-end
-
-local function setupTagging(player)
+-- Update player position based on humanoid MoveDirection
+-- MoveDirection is set by GDScript via set_input_direction()
+local function updatePlayerMovement(player, deltaTime)
 	local character = player.Character
 	if not character then return end
 
-	-- Detect when infected touches a survivor
-	for _, part in pairs(character:GetChildren()) do
-		if part:IsA("Part") then
-			part.Touched:Connect(function(hit)
-				if not roundActive then return end
+	local rootPart = character:FindFirstChild("HumanoidRootPart")
+	if not rootPart then return end
 
-				-- Check if this player is infected
-				local isInfected = false
-				for _, infected in pairs(infectedPlayers) do
-					if infected == player then
-						isInfected = true
-						break
-					end
-				end
-				if not isInfected then return end
+	local humanoid = character:FindFirstChild("Humanoid")
+	if not humanoid then return end
 
-				-- Check if hit part belongs to another player
-				local hitPlayer = Players:GetPlayerFromCharacter(hit.Parent)
-				if hitPlayer then
-					-- Check if in round
-					local inRound = false
-					for _, p in pairs(playersInRound) do
-						if p == hitPlayer then
-							inRound = true
-							break
-						end
-					end
-					if not inRound then return end
+	-- Get move direction (set by GDScript)
+	local moveDir = humanoid.MoveDirection
+	if moveDir.Magnitude > 0.01 then
+		local speed = CONFIG.WALK_SPEED * deltaTime
+		local currentPos = rootPart.Position
+		local newPos = currentPos + (moveDir.Unit * speed)
 
-					-- Check if not already infected
-					local alreadyInfected = false
-					for _, infected in pairs(infectedPlayers) do
-						if infected == hitPlayer then
-							alreadyInfected = true
-							break
-						end
-					end
+		-- Clamp to bounds
+		newPos = Vector3.new(
+			math.clamp(newPos.X, CONFIG.BOUNDS.min, CONFIG.BOUNDS.max),
+			currentPos.Y,  -- Keep Y unchanged
+			math.clamp(newPos.Z, CONFIG.BOUNDS.min, CONFIG.BOUNDS.max)
+		)
 
-					if not alreadyInfected then
-						makeInfected(hitPlayer)
-					end
-				end
+		rootPart.Position = newPos
+	end
+end
+
+-- Check if a player can tag (not on cooldown)
+local function canTag(userId)
+	local cooldown = GameState.tagCooldowns[userId] or 0
+	return cooldown <= 0
+end
+
+-- Get distance between two players
+local function getPlayerDistance(player1, player2)
+	if not player1 or not player2 then return math.huge end
+
+	local char1 = player1.Character
+	local char2 = player2.Character
+	if not char1 or not char2 then return math.huge end
+
+	local root1 = char1:FindFirstChild("HumanoidRootPart")
+	local root2 = char2:FindFirstChild("HumanoidRootPart")
+	if not root1 or not root2 then return math.huge end
+
+	return (root1.Position - root2.Position).Magnitude
+end
+
+-- Tag a player (make them "it")
+local function tagPlayer(newTaggedId)
+	if GameState.taggedPlayerId == newTaggedId then return end
+
+	local oldTagged = GameState.taggedPlayerId
+	GameState.taggedPlayerId = newTaggedId
+
+	-- Set cooldown on the newly tagged player
+	GameState.tagCooldowns[newTaggedId] = CONFIG.TAG_COOLDOWN
+
+	print("[TagGame] Player " .. tostring(newTaggedId) .. " is now IT!")
+
+	-- Broadcast to clients via RemoteEvent
+	local remoteEvents = getRemoteEvents()
+	if remoteEvents and GameState.isServer then
+		local gameStateEvent = remoteEvents:FindFirstChild("GameStateEvent")
+		if gameStateEvent then
+			gameStateEvent:FireAllClients(newTaggedId)
+		end
+	end
+end
+
+-- Check for tag collisions (server only)
+local function checkTagCollisions()
+	if not GameState.isServer then return end
+	if GameState.taggedPlayerId == 0 then return end
+
+	local taggerId = GameState.taggedPlayerId
+	if not canTag(taggerId) then return end
+
+	local tagger = nil
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.UserId == taggerId then
+			tagger = player
+			break
+		end
+	end
+	if not tagger then return end
+
+	-- Check distance to all other players
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player.UserId ~= taggerId then
+			local distance = getPlayerDistance(tagger, player)
+			if distance < CONFIG.TAG_DISTANCE then
+				-- Tag them!
+				tagPlayer(player.UserId)
+				break
+			end
+		end
+	end
+end
+
+-- Update cooldowns
+local function updateCooldowns(deltaTime)
+	for userId, cooldown in pairs(GameState.tagCooldowns) do
+		if cooldown > 0 then
+			GameState.tagCooldowns[userId] = cooldown - deltaTime
+		end
+	end
+end
+
+-- Main game loop via Heartbeat
+RunService.Heartbeat:Connect(function(deltaTime)
+	-- Update all player movements
+	for _, player in ipairs(Players:GetPlayers()) do
+		updatePlayerMovement(player, deltaTime)
+	end
+
+	-- Server-only logic
+	if GameState.isServer then
+		updateCooldowns(deltaTime)
+		checkTagCollisions()
+	end
+end)
+
+-- Handle player joining
+Players.PlayerAdded:Connect(function(player)
+	print("[TagGame] Player added: " .. player.Name .. " (ID: " .. tostring(player.UserId) .. ")")
+
+	-- Initialize cooldown
+	GameState.tagCooldowns[player.UserId] = 0
+
+	-- If this is server and no one is "it", make first player "it"
+	if GameState.isServer and GameState.taggedPlayerId == 0 then
+		local allPlayers = Players:GetPlayers()
+		if #allPlayers >= 1 then
+			tagPlayer(allPlayers[1].UserId)
+		end
+	end
+
+	-- When character loads, set initial position
+	player.CharacterAdded:Connect(function(character)
+		print("[TagGame] Character loaded for: " .. player.Name)
+
+		local rootPart = character:FindFirstChild("HumanoidRootPart")
+		if rootPart then
+			-- Random spawn position
+			local randomOffset = Vector3.new(
+				math.random(-5, 5),
+				1,
+				math.random(-5, 5)
+			)
+			rootPart.Position = randomOffset
+		end
+	end)
+end)
+
+-- Handle player leaving
+Players.PlayerRemoving:Connect(function(player)
+	print("[TagGame] Player removing: " .. player.Name)
+	GameState.tagCooldowns[player.UserId] = nil
+
+	-- If the tagged player left, assign a new one
+	if GameState.isServer and GameState.taggedPlayerId == player.UserId then
+		GameState.taggedPlayerId = 0
+		local remainingPlayers = Players:GetPlayers()
+		for _, p in ipairs(remainingPlayers) do
+			if p.UserId ~= player.UserId then
+				tagPlayer(p.UserId)
+				break
+			end
+		end
+	end
+end)
+
+-- Handle existing players (for late-joining clients)
+for _, player in ipairs(Players:GetPlayers()) do
+	print("[TagGame] Existing player: " .. player.Name)
+	GameState.tagCooldowns[player.UserId] = 0
+end
+
+-- Client: Listen for tag updates from server
+if GameState.isClient then
+	local remoteEvents = getRemoteEvents()
+	if remoteEvents then
+		local gameStateEvent = remoteEvents:FindFirstChild("GameStateEvent")
+		if gameStateEvent then
+			gameStateEvent.OnClientEvent:Connect(function(newTaggedId)
+				GameState.taggedPlayerId = newTaggedId
+				print("[TagGame] Client received: Player " .. tostring(newTaggedId) .. " is now IT!")
 			end)
 		end
 	end
 end
 
-----------------------------
--- ROUND MANAGEMENT
-----------------------------
+print("[TagGame] Game manager initialized!")
 
-local function startRound()
-	roundActive = true
-	playersInRound = Players:GetPlayers()
-	infectedPlayers = {}
-
-	-- Teleport everyone to arena
-	arenaSpawn.Enabled = true
-	lobbySpawn.Enabled = false
-
-	for _, player in pairs(playersInRound) do
-		teleportPlayer(player, arenaSpawn)
-		setupTagging(player)
-	end
-
-	-- Countdown before infection starts
-	for i = 5, 1, -1 do
-		setStatus("Infection starts in " .. i .. "...")
-		task.wait(1)
-	end
-
-	-- Pick random infected
-	if #playersInRound > 0 then
-		local firstInfected = playersInRound[math.random(1, #playersInRound)]
-		makeInfected(firstInfected)
-		setStatus(firstInfected.Name .. " is INFECTED! RUN!")
-	end
-
-	-- Round timer
-	local timeLeft = ROUND_TIME
-	while timeLeft > 0 and roundActive do
-		local survivors = getSurvivors()
-
-		if #survivors == 0 then
-			setStatus("INFECTED WIN! Everyone is infected!")
-			roundActive = false
-			break
+-- Export game state for external access
+return {
+	getTaggedPlayerId = function()
+		return GameState.taggedPlayerId
+	end,
+	setTaggedPlayer = function(userId)
+		if GameState.isServer then
+			tagPlayer(userId)
 		end
-
-		if #survivors == 1 and #playersInRound > 1 then
-			setStatus(survivors[1].Name .. " WINS! Last survivor!")
-			roundActive = false
-			break
-		end
-
-		setStatus("Survivors: " .. #survivors .. " | Time: " .. timeLeft)
-		task.wait(1)
-		timeLeft = timeLeft - 1
-	end
-
-	-- Round ended by timer
-	if roundActive then
-		local survivors = getSurvivors()
-		if #survivors > 0 then
-			local winnerNames = {}
-			for _, p in pairs(survivors) do
-				table.insert(winnerNames, p.Name)
-			end
-			setStatus("SURVIVORS WIN! " .. table.concat(winnerNames, ", "))
-		end
-	end
-
-	roundActive = false
-end
-
-local function endRound()
-	roundActive = false
-
-	-- Send everyone back to lobby
-	arenaSpawn.Enabled = false
-	lobbySpawn.Enabled = true
-
-	task.wait(3)
-
-	for _, player in pairs(Players:GetPlayers()) do
-		resetPlayer(player)
-	end
-
-	playersInRound = {}
-	infectedPlayers = {}
-end
-
-----------------------------
--- MAIN GAME LOOP
-----------------------------
-
-local function gameLoop()
-	while true do
-		-- Intermission / waiting for players
-		repeat
-			local playerCount = #Players:GetPlayers()
-			setStatus("Waiting for players... (" .. playerCount .. "/" .. MIN_PLAYERS .. ")")
-			task.wait(1)
-		until #Players:GetPlayers() >= MIN_PLAYERS
-
-		-- Countdown to start
-		local enoughPlayers = true
-		for i = INTERMISSION_TIME, 1, -1 do
-			setStatus("Next round in " .. i .. " seconds...")
-
-			if #Players:GetPlayers() < MIN_PLAYERS then
-				setStatus("Not enough players!")
-				enoughPlayers = false
-				break
-			end
-
-			task.wait(1)
-		end
-
-		-- Start round if we still have enough players
-		if enoughPlayers and #Players:GetPlayers() >= MIN_PLAYERS then
-			startRound()
-			task.wait(5)  -- show winner message
-			endRound()
-		end
-
-		task.wait(3)
-	end
-end
-
-----------------------------
--- PLAYER CONNECTIONS
-----------------------------
-
-Players.PlayerAdded:Connect(function(player)
-	print("[Game] Player joined: " .. player.Name)
-
-	player.CharacterAdded:Connect(function(character)
-		-- Reset appearance when character spawns
-		task.wait(0.1)
-		local humanoid = character:FindFirstChild("Humanoid")
-		if humanoid then
-			humanoid.WalkSpeed = 16  -- normal speed
-		end
-	end)
-end)
-
-Players.PlayerRemoving:Connect(function(player)
-	print("[Game] Player leaving: " .. player.Name)
-
-	-- Remove from tables if they leave mid-game
-	for i, p in pairs(playersInRound) do
-		if p == player then
-			table.remove(playersInRound, i)
-			break
-		end
-	end
-
-	for i, p in pairs(infectedPlayers) do
-		if p == player then
-			table.remove(infectedPlayers, i)
-			break
-		end
-	end
-end)
-
--- Start the game!
-print("[Game] Starting game loop...")
-
--- Only run game loop on server
-if RunService:IsServer() then
-	task.spawn(gameLoop)
-end
+	end,
+	getConfig = function()
+		return CONFIG
+	end,
+}

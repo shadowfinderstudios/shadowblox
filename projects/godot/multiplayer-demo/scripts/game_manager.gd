@@ -1,9 +1,10 @@
 extends Node3D
 
-# GameManager - Main game controller for the Tag multiplayer demo
-# Coordinates between Godot (rendering/input) and shadowblox (game logic)
+# GameManager - Thin rendering layer for the Tag game
+# Luau handles: game logic, movement, tagging
+# GDScript handles: rendering, input forwarding, network transport
 
-var sbx_runtime = null  # Will be SbxRuntime if available
+var sbx_runtime = null
 var sbx_available := false
 
 @onready var ui_layer: CanvasLayer = $UILayer
@@ -18,9 +19,7 @@ var sbx_available := false
 
 var local_player_node: Node3D = null
 var player_nodes := {}  # user_id -> Node3D
-var game_started := false
-var tagged_player_id: int = 0  # Who is "it" - 0 means no one yet
-var tag_cooldown := 0.0  # Prevent instant tag-back
+var tagged_player_id: int = 0
 
 func _ready() -> void:
 	# Connect network manager signals
@@ -39,16 +38,19 @@ func _ready() -> void:
 	main_menu.visible = true
 	game_ui.visible = false
 
-	# Check if SbxRuntime is available (extension loaded)
+	# Initialize SbxRuntime
 	if ClassDB.class_exists("SbxRuntime"):
 		sbx_available = true
-		# Create SbxRuntime dynamically to avoid scene-load crashes
 		sbx_runtime = ClassDB.instantiate("SbxRuntime")
 		if sbx_runtime:
 			sbx_runtime.name = "SbxRuntime"
 			add_child(sbx_runtime)
-			print("[GameManager] ShadowBlox extension loaded - using Luau integration")
-			# Wait a frame for SbxRuntime to initialize
+			print("[GameManager] ShadowBlox extension loaded")
+
+			# Connect to SbxRuntime signals
+			sbx_runtime.tagged_player_changed.connect(_on_tagged_player_changed)
+
+			# Wait a frame for initialization
 			await get_tree().process_frame
 			_setup_luau_game()
 		else:
@@ -56,22 +58,29 @@ func _ready() -> void:
 			sbx_available = false
 	else:
 		print("[GameManager] ShadowBlox extension not available")
-		print("[GameManager] To build: cd shadowblox_godot && scons platform=windows target=template_debug")
 
 func _setup_luau_game() -> void:
-	# Load and execute the game initialization script
-	var game_init_path = "res://luau/game_init.luau"
-	var file = FileAccess.open(game_init_path, FileAccess.READ)
-	if file:
-		var code = file.get_as_text()
-		file.close()
-		var result = sbx_runtime.execute_script(code)
-		if result != "OK":
-			printerr("[GameManager] Failed to load game_init.luau: ", result)
-		else:
-			print("[GameManager] Loaded game_init.luau")
-	else:
-		print("[GameManager] game_init.luau not found, will load when available")
+	# Load game_init.luau first (sets up workspace, ReplicatedStorage)
+	var init_result = _run_luau_script("res://luau/game_init.luau")
+	if init_result != "OK":
+		printerr("[GameManager] game_init.luau failed: ", init_result)
+		return
+
+	# Then load game_manager.luau (game logic)
+	var manager_result = _run_luau_script("res://luau/game_manager.luau")
+	if manager_result != "OK":
+		printerr("[GameManager] game_manager.luau failed: ", manager_result)
+		return
+
+	print("[GameManager] Luau scripts loaded successfully")
+
+func _run_luau_script(path: String) -> String:
+	var file = FileAccess.open(path, FileAccess.READ)
+	if not file:
+		return "File not found: " + path
+	var code = file.get_as_text()
+	file.close()
+	return sbx_runtime.execute_script(code)
 
 func _on_host_pressed() -> void:
 	var display_name = name_input.text if name_input.text != "" else "Host"
@@ -80,10 +89,8 @@ func _on_host_pressed() -> void:
 		main_menu.visible = false
 		game_ui.visible = true
 
-		# Set runtime as server
 		if sbx_runtime and sbx_available:
 			sbx_runtime.set_is_server(true)
-			# Create local player
 			sbx_runtime.create_player(1, display_name)
 			sbx_runtime.load_character(1)
 
@@ -99,7 +106,6 @@ func _on_join_pressed() -> void:
 		main_menu.visible = false
 		game_ui.visible = true
 
-		# Set runtime as client
 		if sbx_runtime and sbx_available:
 			sbx_runtime.set_is_client(true)
 
@@ -107,13 +113,12 @@ func _on_join_pressed() -> void:
 
 func _on_server_started() -> void:
 	print("[GameManager] Server started")
-	status_label.text = "Server running - Waiting for players..."
+	status_label.text = "Server running"
 
 func _on_client_connected() -> void:
 	print("[GameManager] Connected to server")
-	status_label.text = "Connected! Waiting for game..."
+	status_label.text = "Connected!"
 
-	# Create local player on client
 	var user_id = NetworkManager.local_player_id
 	var display_name = name_input.text if name_input.text != "" else "Player"
 	if sbx_runtime and sbx_available:
@@ -131,11 +136,9 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 	print("[GameManager] Player joined: ", display_name, " (ID: ", user_id, ")")
 
 	if NetworkManager.is_server and sbx_runtime and sbx_available:
-		# Server creates the player in shadowblox
 		sbx_runtime.create_player(user_id, display_name)
 		sbx_runtime.load_character(user_id)
 
-	# Spawn visual representation
 	if not player_nodes.has(user_id):
 		var is_local = (user_id == NetworkManager.local_player_id)
 		_spawn_player_node(user_id, display_name, is_local)
@@ -143,18 +146,10 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 	_update_player_list()
 	_update_status()
 
-	# Start game when we have 2+ players (server starts it)
-	if NetworkManager.is_server and player_nodes.size() >= 2 and tagged_player_id == 0:
-		_start_game()
-
 func _on_existing_player(user_id: int, display_name: String) -> void:
-	# Called on client when receiving info about players already in the game
 	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
-
-	# Spawn visual representation (always remote for existing players)
 	if not player_nodes.has(user_id):
 		_spawn_player_node(user_id, display_name, false)
-
 	_update_player_list()
 	_update_status()
 
@@ -164,7 +159,6 @@ func _on_player_left(user_id: int) -> void:
 	if NetworkManager.is_server and sbx_runtime and sbx_available:
 		sbx_runtime.remove_player(user_id)
 
-	# Remove visual representation
 	if player_nodes.has(user_id):
 		player_nodes[user_id].queue_free()
 		player_nodes.erase(user_id)
@@ -172,8 +166,20 @@ func _on_player_left(user_id: int) -> void:
 	_update_player_list()
 	_update_status()
 
+func _on_tagged_player_changed(old_id: int, new_id: int) -> void:
+	tagged_player_id = new_id
+	print("[GameManager] Tagged player changed: ", old_id, " -> ", new_id)
+
+	# Sync to clients via RPC
+	if NetworkManager.is_server:
+		_sync_tagged_player.rpc(new_id)
+
+	# Update visuals
+	_update_player_color(old_id)
+	_update_player_color(new_id)
+	_update_status()
+
 func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> void:
-	# Create a simple visual representation of the player
 	var player_node = Node3D.new()
 	player_node.name = "Player_" + str(user_id)
 
@@ -185,9 +191,8 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 	body.mesh = capsule
 	body.name = "Body"
 
-	# Create material
 	var material = StandardMaterial3D.new()
-	material.albedo_color = Color.BLUE if not is_local else Color.GREEN
+	material.albedo_color = Color.GREEN if is_local else Color.BLUE
 	body.material_override = material
 
 	player_node.add_child(body)
@@ -199,11 +204,9 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 	label_3d.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	player_node.add_child(label_3d)
 
-	# Set initial position (spread players out)
-	var spawn_offset = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
-	player_node.position = spawn_offset
+	# Initial position
+	player_node.position = Vector3(randf_range(-5, 5), 1, randf_range(-5, 5))
 
-	# Add to tree first (required for look_at)
 	add_child(player_node)
 	player_nodes[user_id] = player_node
 
@@ -212,25 +215,25 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 		local_player_node = player_node
 		var camera = Camera3D.new()
 		camera.position = Vector3(0, 5, 10)
-		player_node.add_child(camera)  # Add to tree BEFORE look_at
+		player_node.add_child(camera)
 		camera.look_at(Vector3.ZERO)
 		camera.current = true
 
-func _process(delta: float) -> void:
+func _process(_delta: float) -> void:
+	if not sbx_runtime or not sbx_available:
+		return
+
+	# Forward input to Luau
 	if local_player_node:
-		_handle_input(delta)
-		# Send our position to the server/clients
-		_send_position_update()
-		# Check for tagging (only if we're "it" and cooldown expired)
-		if tag_cooldown > 0:
-			tag_cooldown -= delta
-		else:
-			_check_for_tag()
+		_forward_input_to_luau()
 
-	# Sync player positions from shadowblox (simplified for demo)
-	_sync_player_positions()
+	# Read positions from Luau and update meshes
+	_sync_positions_from_luau()
 
-func _handle_input(delta: float) -> void:
+	# Send position updates over network
+	_send_position_update()
+
+func _forward_input_to_luau() -> void:
 	var direction = Vector3.ZERO
 
 	if Input.is_action_pressed("move_forward"):
@@ -244,21 +247,26 @@ func _handle_input(delta: float) -> void:
 
 	if direction != Vector3.ZERO:
 		direction = direction.normalized()
-		var speed = 5.0
-		local_player_node.position += direction * speed * delta
 
-		# Keep within bounds
-		local_player_node.position.x = clamp(local_player_node.position.x, -20, 20)
-		local_player_node.position.z = clamp(local_player_node.position.z, -20, 20)
+	# Send input direction to Luau
+	sbx_runtime.set_input_direction(NetworkManager.local_player_id, direction)
+
+func _sync_positions_from_luau() -> void:
+	# Get all player positions from Luau
+	var positions: Dictionary = sbx_runtime.get_all_player_positions()
+
+	# Update visual nodes to match Luau positions
+	for user_id in positions:
+		var pos: Vector3 = positions[user_id]
+		if player_nodes.has(user_id):
+			player_nodes[user_id].position = pos
 
 var _last_sent_position := Vector3.ZERO
-const TAG_DISTANCE := 1.5  # Distance at which players can tag each other
 
 func _send_position_update() -> void:
 	if not local_player_node:
 		return
 
-	# Only send if position changed significantly
 	var current_pos = local_player_node.position
 	if current_pos.distance_to(_last_sent_position) < 0.01:
 		return
@@ -267,36 +275,38 @@ func _send_position_update() -> void:
 	var user_id = NetworkManager.local_player_id
 
 	if NetworkManager.is_server:
-		# Server broadcasts to all clients
 		_broadcast_position.rpc(user_id, current_pos)
 	else:
-		# Client sends to server
 		_send_position_to_server.rpc_id(1, user_id, current_pos)
 
 @rpc("any_peer", "unreliable_ordered")
 func _send_position_to_server(user_id: int, pos: Vector3) -> void:
 	if not NetworkManager.is_server:
 		return
-	# Server received position from client, broadcast to all
+
+	# Update Luau position
+	if sbx_runtime and sbx_available:
+		sbx_runtime.set_player_position(user_id, pos)
+
+	# Broadcast to all clients
 	_broadcast_position.rpc(user_id, pos)
-	# Also update locally on server
-	_update_player_position(user_id, pos)
 
 @rpc("authority", "unreliable_ordered", "call_local")
 func _broadcast_position(user_id: int, pos: Vector3) -> void:
-	_update_player_position(user_id, pos)
+	# Update Luau position (for clients)
+	if sbx_runtime and sbx_available and user_id != NetworkManager.local_player_id:
+		sbx_runtime.set_player_position(user_id, pos)
 
-func _update_player_position(user_id: int, pos: Vector3) -> void:
-	# Don't update our own position from network
-	if user_id == NetworkManager.local_player_id:
-		return
+@rpc("authority", "reliable", "call_local")
+func _sync_tagged_player(new_tagged_id: int) -> void:
+	tagged_player_id = new_tagged_id
+	if sbx_runtime and sbx_available:
+		sbx_runtime.set_tagged_player(new_tagged_id)
 
-	if player_nodes.has(user_id):
-		player_nodes[user_id].position = pos
-
-func _sync_player_positions() -> void:
-	# Position sync is now handled by RPCs above
-	pass
+	# Update all player colors
+	for user_id in player_nodes:
+		_update_player_color(user_id)
+	_update_status()
 
 func _update_player_list() -> void:
 	player_list.clear()
@@ -304,6 +314,8 @@ func _update_player_list() -> void:
 		var name_text = "Player " + str(user_id)
 		if user_id == NetworkManager.local_player_id:
 			name_text += " (You)"
+		if user_id == tagged_player_id:
+			name_text += " [IT]"
 		player_list.add_item(name_text)
 
 func _update_status() -> void:
@@ -312,82 +324,12 @@ func _update_status() -> void:
 	if tagged_player_id == NetworkManager.local_player_id:
 		it_text = " - YOU'RE IT!"
 	elif tagged_player_id > 0:
-		it_text = " - " + str(tagged_player_id) + " is IT"
+		it_text = " - Player " + str(tagged_player_id) + " is IT"
 
 	if NetworkManager.is_server:
 		status_label.text = "Server - " + str(player_count) + " players" + it_text
 	else:
 		status_label.text = "Client - " + str(player_count) + " players" + it_text
-
-func _cleanup_game() -> void:
-	for user_id in player_nodes:
-		player_nodes[user_id].queue_free()
-	player_nodes.clear()
-	local_player_node = null
-	game_started = false
-	tagged_player_id = 0
-
-# === TAGGING LOGIC ===
-
-func _check_for_tag() -> void:
-	# Only check if we're "it"
-	if tagged_player_id != NetworkManager.local_player_id:
-		return
-
-	if not local_player_node:
-		return
-
-	var my_pos = local_player_node.position
-	for user_id in player_nodes:
-		if user_id == NetworkManager.local_player_id:
-			continue  # Don't tag ourselves
-
-		var other_node = player_nodes[user_id]
-		var distance = my_pos.distance_to(other_node.position)
-
-		if distance < TAG_DISTANCE:
-			# Tag them!
-			_tag_player(user_id)
-			break
-
-func _tag_player(new_tagged_id: int) -> void:
-	print("[GameManager] Tagged player: ", new_tagged_id)
-
-	# Set cooldown to prevent instant tag-back
-	tag_cooldown = 1.0
-
-	if NetworkManager.is_server:
-		# Server: update locally and broadcast to all
-		_set_tagged_player(new_tagged_id)
-		_sync_tagged_player.rpc(new_tagged_id)
-	else:
-		# Client: request server to update
-		_request_tag.rpc_id(1, new_tagged_id)
-
-@rpc("any_peer", "reliable")
-func _request_tag(new_tagged_id: int) -> void:
-	if not NetworkManager.is_server:
-		return
-	# Server validates and broadcasts
-	_set_tagged_player(new_tagged_id)
-	_sync_tagged_player.rpc(new_tagged_id)
-
-@rpc("authority", "reliable", "call_local")
-func _sync_tagged_player(new_tagged_id: int) -> void:
-	_set_tagged_player(new_tagged_id)
-
-func _set_tagged_player(new_tagged_id: int) -> void:
-	var old_tagged = tagged_player_id
-	tagged_player_id = new_tagged_id
-
-	# Set cooldown if we just got tagged
-	if new_tagged_id == NetworkManager.local_player_id:
-		tag_cooldown = 1.0
-
-	# Update player colors
-	_update_player_color(old_tagged)
-	_update_player_color(new_tagged_id)
-	_update_status()
 
 func _update_player_color(user_id: int) -> void:
 	if not player_nodes.has(user_id):
@@ -406,14 +348,15 @@ func _update_player_color(user_id: int) -> void:
 	var is_it = (user_id == tagged_player_id)
 
 	if is_it:
-		material.albedo_color = Color.RED  # "It" is red
+		material.albedo_color = Color.RED
 	elif is_local:
-		material.albedo_color = Color.GREEN  # Local player is green
+		material.albedo_color = Color.GREEN
 	else:
-		material.albedo_color = Color.BLUE  # Other players are blue
+		material.albedo_color = Color.BLUE
 
-func _start_game() -> void:
-	# Make the host "it" first
-	if NetworkManager.is_server:
-		_set_tagged_player(1)  # Host is always ID 1
-		_sync_tagged_player.rpc(1)
+func _cleanup_game() -> void:
+	for user_id in player_nodes:
+		player_nodes[user_id].queue_free()
+	player_nodes.clear()
+	local_player_node = null
+	tagged_player_id = 0

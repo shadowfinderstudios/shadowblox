@@ -18,6 +18,8 @@
 #include <string>
 
 #include "godot_cpp/variant/utility_functions.hpp"
+#include "godot_cpp/variant/vector3.hpp"
+#include "godot_cpp/variant/dictionary.hpp"
 
 #include "Luau/Compiler.h"
 #include "lua.h"
@@ -434,6 +436,82 @@ void SbxRuntime::load_character(int64_t user_id) {
 	godot::UtilityFunctions::print("[SbxRuntime] Loaded character for player: ", godot::String(player->GetDisplayName()));
 }
 
+void SbxRuntime::set_input_direction(int64_t user_id, godot::Vector3 direction) {
+	auto player = get_player(user_id);
+	if (!player) return;
+
+	auto character = player->GetCharacter();
+	if (!character) return;
+
+	// Find the Humanoid and set MoveDirection
+	auto humanoidInstance = character->FindFirstChild("Humanoid");
+	if (humanoidInstance && humanoidInstance->IsA("Humanoid")) {
+		auto humanoid = std::dynamic_pointer_cast<SBX::Classes::Humanoid>(humanoidInstance);
+		if (humanoid) {
+			humanoid->SetMoveDirection(SBX::DataTypes::Vector3(direction.x, direction.y, direction.z));
+		}
+	}
+}
+
+godot::Vector3 SbxRuntime::get_player_position(int64_t user_id) const {
+	auto player = get_player(user_id);
+	if (!player) return godot::Vector3();
+
+	auto character = player->GetCharacter();
+	if (!character) return godot::Vector3();
+
+	auto rootPart = character->GetPrimaryPart();
+	if (!rootPart) return godot::Vector3();
+
+	SBX::DataTypes::Vector3 pos = rootPart->GetPosition();
+	return godot::Vector3(pos.X, pos.Y, pos.Z);
+}
+
+void SbxRuntime::set_player_position(int64_t user_id, godot::Vector3 position) {
+	auto player = get_player(user_id);
+	if (!player) return;
+
+	auto character = player->GetCharacter();
+	if (!character) return;
+
+	auto rootPart = character->GetPrimaryPart();
+	if (!rootPart) return;
+
+	rootPart->SetPosition(SBX::DataTypes::Vector3(position.x, position.y, position.z));
+}
+
+godot::Dictionary SbxRuntime::get_all_player_positions() const {
+	godot::Dictionary result;
+	auto players = get_players();
+	if (!players) return result;
+
+	// Iterate through all children of Players
+	for (const auto &child : players->GetChildren()) {
+		if (child->IsA("Player")) {
+			auto player = std::dynamic_pointer_cast<SBX::Classes::Player>(child);
+			if (player) {
+				int64_t userId = player->GetUserId();
+				auto character = player->GetCharacter();
+				if (character) {
+					auto rootPart = character->GetPrimaryPart();
+					if (rootPart) {
+						SBX::DataTypes::Vector3 pos = rootPart->GetPosition();
+						result[userId] = godot::Vector3(pos.X, pos.Y, pos.Z);
+					}
+				}
+			}
+		}
+	}
+	return result;
+}
+
+void SbxRuntime::set_tagged_player(int64_t user_id) {
+	int64_t oldTagged = taggedPlayerId;
+	taggedPlayerId = user_id;
+	godot::UtilityFunctions::print("[SbxRuntime] Tagged player set to: ", user_id);
+	emit_signal("tagged_player_changed", oldTagged, user_id);
+}
+
 void SbxRuntime::_bind_methods() {
 	godot::ClassDB::bind_method(godot::D_METHOD("execute_script", "code"), &SbxRuntime::execute_script);
 	godot::ClassDB::bind_method(godot::D_METHOD("gc_step", "step_size"), &SbxRuntime::gc_step);
@@ -452,6 +530,16 @@ void SbxRuntime::_bind_methods() {
 	godot::ClassDB::bind_method(godot::D_METHOD("load_character", "user_id"), &SbxRuntime::load_character);
 	godot::ClassDB::bind_method(godot::D_METHOD("on_network_event", "event_name", "sender_id", "data"), &SbxRuntime::on_network_event);
 
+	// Input/Position bridging methods
+	godot::ClassDB::bind_method(godot::D_METHOD("set_input_direction", "user_id", "direction"), &SbxRuntime::set_input_direction);
+	godot::ClassDB::bind_method(godot::D_METHOD("get_player_position", "user_id"), &SbxRuntime::get_player_position);
+	godot::ClassDB::bind_method(godot::D_METHOD("set_player_position", "user_id", "position"), &SbxRuntime::set_player_position);
+	godot::ClassDB::bind_method(godot::D_METHOD("get_all_player_positions"), &SbxRuntime::get_all_player_positions);
+
+	// Tag game state methods
+	godot::ClassDB::bind_method(godot::D_METHOD("set_tagged_player", "user_id"), &SbxRuntime::set_tagged_player);
+	godot::ClassDB::bind_method(godot::D_METHOD("get_tagged_player"), &SbxRuntime::get_tagged_player);
+
 	// Signals for network communication
 	ADD_SIGNAL(godot::MethodInfo("network_event_to_server",
 			godot::PropertyInfo(godot::Variant::STRING, "event_name"),
@@ -468,6 +556,9 @@ void SbxRuntime::_bind_methods() {
 			godot::PropertyInfo(godot::Variant::STRING, "display_name")));
 	ADD_SIGNAL(godot::MethodInfo("player_removing",
 			godot::PropertyInfo(godot::Variant::INT, "user_id")));
+	ADD_SIGNAL(godot::MethodInfo("tagged_player_changed",
+			godot::PropertyInfo(godot::Variant::INT, "old_tagged_id"),
+			godot::PropertyInfo(godot::Variant::INT, "new_tagged_id")));
 }
 
 } // namespace SbxGD
