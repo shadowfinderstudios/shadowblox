@@ -247,7 +247,7 @@ func _on_existing_player(user_id: int, display_name: String, initial_pos: Vector
 	_update_player_list()
 
 
-func _on_world_state_received(state: Dictionary) -> void:
+func _on_world_state_received(_state: Dictionary) -> void:
 	print("[GameManager] World state received")
 	# Players are handled via existing_player signals
 	# Game state sync could be added here if needed
@@ -309,10 +309,15 @@ func _on_host_migration_failed(reason: String) -> void:
 
 func _handle_post_migration_cleanup() -> void:
 	# After becoming the new host, our user_id changes from N to 1
-	# Need to update player node references
+	# Need to update player node references and remove old host's node
 
 	var our_old_node = null
 	var our_old_id = -1
+	var old_host_node = null
+
+	# The old host had ID 1 - save reference before we overwrite it
+	if player_nodes.has(1):
+		old_host_node = player_nodes[1]
 
 	# Find our old player node (the one we controlled before migration)
 	for user_id in player_nodes:
@@ -332,9 +337,16 @@ func _handle_post_migration_cleanup() -> void:
 			player_materials[1] = player_materials[our_old_id]
 			player_materials.erase(our_old_id)
 
-	# Remove the old host's player node (ID 1 from before)
-	# This should have been the previous host who disconnected
-	# The peer disconnect should handle this normally
+	# Remove the old host's player node (the node that was at ID 1 before)
+	if old_host_node and old_host_node != local_player_node:
+		print("[GameManager] Removing old host's player node")
+		old_host_node.queue_free()
+
+		# Also clean up old host from Luau if we're the server
+		if sbx_runtime and sbx_available:
+			# The old host had user_id 1, but we now have user_id 1
+			# We need to remove any duplicate player entries in Luau
+			pass  # Luau should handle this via remove_player being called earlier
 
 
 # ============================================================================
@@ -516,6 +528,10 @@ func _sync_positions_from_luau() -> void:
 		var pos: Vector3 = positions[user_id]
 		if player_nodes.has(user_id):
 			player_nodes[user_id].position = pos
+
+		# Also update NodeTunnelManager's position tracking for world state sync
+		if NodeTunnelManager.is_server:
+			NodeTunnelManager.set_player_position(user_id, pos)
 
 
 var _last_sent_position := Vector3.ZERO

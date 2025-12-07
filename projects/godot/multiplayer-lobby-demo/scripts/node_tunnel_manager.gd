@@ -339,7 +339,7 @@ func _on_host_migration_completed(new_host_id: String) -> void:
 		is_client = false
 
 		# Update our user_id to 1
-		var old_user_id = local_player_id
+		var _old_user_id = local_player_id
 		local_player_id = 1
 
 		if player_info.has(local_online_id):
@@ -410,6 +410,14 @@ func _broadcast_player_left(user_id: int, online_id: String) -> void:
 # WORLD STATE SYNC
 # ============================================================================
 
+# Store a player's position (called by GameManager when positions update)
+func set_player_position(user_id: int, pos: Vector3) -> void:
+	for oid in player_info:
+		if player_info[oid].user_id == user_id:
+			player_info[oid]["position"] = pos
+			break
+
+
 @rpc("any_peer", "reliable")
 func fetch_world_state() -> void:
 	if not is_server:
@@ -417,7 +425,7 @@ func fetch_world_state() -> void:
 
 	var sender_id = multiplayer.get_remote_sender_id()
 
-	# Build world state including all player info
+	# Build world state including all player info with positions
 	var state: Dictionary = {
 		"players": {},
 		"host_online_id": host_online_id
@@ -425,12 +433,12 @@ func fetch_world_state() -> void:
 
 	for oid in player_info:
 		var info = player_info[oid]
+		var pos = info.get("position", Vector3.ZERO)
 		state.players[oid] = {
 			"user_id": info.user_id,
-			"display_name": info.display_name
+			"display_name": info.display_name,
+			"position": pos
 		}
-
-	# Game manager will add positions and game state
 
 	receive_world_state.rpc_id(sender_id, state)
 
@@ -449,7 +457,8 @@ func receive_world_state(state: Dictionary) -> void:
 			var pdata = state.players[oid]
 			if pdata.user_id != local_player_id:
 				player_info[oid] = pdata
-				existing_player.emit(pdata.user_id, pdata.display_name, Vector3.ZERO)
+				var pos = pdata.get("position", Vector3.ZERO)
+				existing_player.emit(pdata.user_id, pdata.display_name, pos)
 
 	world_state_received.emit(state)
 
@@ -467,7 +476,7 @@ func send_position(user_id: int, pos: Vector3) -> void:
 
 
 @rpc("authority", "unreliable_ordered", "call_local")
-func broadcast_position(user_id: int, pos: Vector3) -> void:
+func broadcast_position(_user_id: int, _pos: Vector3) -> void:
 	# This will be received by GameManager via signal or direct call
 	pass  # GameManager handles position updates via its own sync
 
