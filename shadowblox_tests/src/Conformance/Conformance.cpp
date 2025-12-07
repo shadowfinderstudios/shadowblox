@@ -101,3 +101,4 @@ static ExecOutput runConformance(LuauRuntime &runtime, const char *name) {
 	}
 
 CONFORMANCE_TEST("enums", "DataTypes/Enums.luau", DataTypes::luaSBX_opendatatypes)
+CONFORMANCE_TEST("vector3", "DataTypes/Vector3.luau", DataTypes::luaSBX_opendatatypes)

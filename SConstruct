@@ -30,6 +30,14 @@ opts.Add(
     )
 )
 
+opts.Add(
+    BoolVariable(
+        key="skip_tests",
+        help="Skip building tests (useful for GDExtension builds)",
+        default=False,
+    )
+)
+
 opts.Update(env_base)
 
 if env_base["toolchain"] == "gcc":
@@ -64,7 +72,8 @@ if env_base["toolchain"] in ["msvc", "msvc-clang"]:
     elif env_base["config"] == "release":
         env_base.Append(CCFLAGS=["/O3"])
 else:
-    env_base.Append(CCFLAGS=["-std=c++20"])
+    # -fPIC is needed to link static libs into shared libraries (GDExtension)
+    env_base.Append(CCFLAGS=["-std=c++20", "-fPIC"])
     if env_base["config"] == "debug":
         env_base.Append(CCFLAGS=["-O2", "-g"])
     elif env_base["config"] == "relwithdbg":
@@ -91,11 +100,14 @@ Export("extern_includes")
 
 luau_lib, luau_includes = SConscript("extern/SCSub_Luau")
 Export(["luau_lib", "luau_includes"])
+Default(luau_lib)
 
 shadowblox_lib, shadowblox_includes = SConscript("shadowblox/SCSub")
 Export(["shadowblox_lib", "shadowblox_includes"])
+Default(shadowblox_lib)
 
-SConscript("shadowblox_tests/SCSub")
+if not env_base["skip_tests"]:
+    SConscript("shadowblox_tests/SCSub")
 
 # TODO: GDExtension should invoke this SCons script, not the other way around
 # SConscript("shadowblox_godot/SCSub")

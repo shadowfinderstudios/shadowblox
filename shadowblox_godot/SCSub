@@ -15,14 +15,17 @@ env["use_llvm"] = True
 env["use_hot_reload"] = False
 Export("env")
 
+# Build godot-cpp first to get the configured environment
+env = SConscript("../extern/godot-cpp/SConstruct")
+
+# Add our include paths
 env.Append(CPPPATH=["src/", "include/"])
 sources = Glob("src/*.cpp")
 
+# Link shadowblox and luau libraries
 env.Append(LIBS=[shadowblox_lib, luau_lib])
 env.Append(CPPPATH=luau_includes)
 env.Append(CPPPATH=shadowblox_includes)
-
-env = SConscript("../extern/godot-cpp/SConstruct")
 
 if env["target"] in ["editor", "template_debug"]:
     doc_data = env.GodotCPPDocData(
