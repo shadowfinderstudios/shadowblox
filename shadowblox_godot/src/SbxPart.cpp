@@ -13,10 +13,12 @@
  ******************************************************************************/
 
 #include "SbxGD/SbxPart.hpp"
+#include "SbxGD/SbxRuntime.hpp"
 
 #include "godot_cpp/variant/utility_functions.hpp"
 
 #include "Sbx/Classes/Part.hpp"
+#include "Sbx/Classes/Workspace.hpp"
 #include "Sbx/DataTypes/Vector3.hpp"
 #include "Sbx/GodotBridge.hpp"
 
@@ -29,6 +31,25 @@ SbxPart::~SbxPart() {
 }
 
 void SbxPart::_ready() {
+	// Auto-create Part if not bound
+	if (!part) {
+		part = SBX::Bridge::CreatePart();
+		part->SetName(godot::String(get_name()).utf8().get_data());
+
+		// Auto-parent to Workspace if runtime exists
+		SbxRuntime *runtime = SbxRuntime::get_singleton();
+		if (runtime) {
+			auto workspace = runtime->get_workspace();
+			if (workspace) {
+				part->SetParent(workspace);
+			}
+		}
+
+		// Sync initial position from Godot node
+		godot::Vector3 pos = get_position();
+		part->SetPosition(SBX::DataTypes::Vector3(pos.x, pos.y, pos.z));
+	}
+
 	setup_mesh();
 	setup_collision();
 	sync_from_sbx();
