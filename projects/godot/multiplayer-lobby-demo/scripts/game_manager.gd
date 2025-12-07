@@ -47,6 +47,7 @@ func _ready() -> void:
 	NodeTunnelManager.relay_connected.connect(_on_relay_connected)
 	NodeTunnelManager.hosting_started.connect(_on_hosting_started)
 	NodeTunnelManager.joined_lobby.connect(_on_joined_lobby)
+	NodeTunnelManager.registration_complete.connect(_on_registration_complete)
 	NodeTunnelManager.left_room.connect(_on_left_room)
 	NodeTunnelManager.player_joined.connect(_on_player_joined)
 	NodeTunnelManager.player_left.connect(_on_player_left)
@@ -169,6 +170,21 @@ func _on_joined_lobby(host_id: String) -> void:
 		sbx_runtime.set_is_client(true)
 
 	status_label.text = "Connected to " + host_id
+
+
+func _on_registration_complete(user_id: int) -> void:
+	# Called when the server has assigned us a user_id
+	# Now we can create our local player with the correct ID
+	print("[GameManager] Registration complete. User ID: ", user_id)
+
+	var display_name = name_input.text if name_input.text != "" else "Player"
+
+	if sbx_runtime and sbx_available:
+		sbx_runtime.create_local_player(user_id, display_name)
+		sbx_runtime.load_character(user_id)
+
+	_spawn_player_node(user_id, display_name, true)
+	_update_player_list()
 
 
 func _on_left_room() -> void:
@@ -353,16 +369,13 @@ func _on_join_pressed() -> void:
 	browse_button.disabled = true
 	join_button.text = "Joining..."
 
+	# This will connect to the lobby and register with the server
+	# When registration completes, _on_registration_complete will be called
+	# with our assigned user_id, and we'll create the local player there
 	NodeTunnelManager.join_game(host_id, display_name)
 
 	join_button.text = "Join Game"
-
-	# Create local player after joining
-	var user_id = NodeTunnelManager.local_player_id
-	if sbx_runtime and sbx_available:
-		sbx_runtime.create_local_player(user_id, display_name)
-		sbx_runtime.load_character(user_id)
-	_spawn_player_node(user_id, display_name, true)
+	# Local player creation happens in _on_registration_complete
 
 
 func _on_browse_pressed() -> void:

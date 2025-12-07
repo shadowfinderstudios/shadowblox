@@ -41,6 +41,7 @@ var world_state_data: Dictionary = {}
 signal relay_connected(online_id: String)
 signal hosting_started
 signal joined_lobby(host_id: String)
+signal registration_complete(user_id: int)  # Fired when server assigns our user_id
 signal left_room
 signal player_joined(user_id: int, display_name: String, online_id: String)
 signal player_left(user_id: int, online_id: String)
@@ -227,11 +228,16 @@ func join_game(host_id: String, display_name: String) -> void:
 	is_server = false
 	is_client = true
 
-	# Request world state from server
-	fetch_world_state.rpc_id(1)
-
 	print("[NodeTunnelManager] Joined lobby: ", host_id)
 	joined_lobby.emit(host_id)
+
+	# Register with the server - this will assign our user_id
+	# The server will respond with _receive_user_id which sets local_player_id
+	# and emits registration_complete signal
+	register_player.rpc_id(1, display_name)
+
+	# Request world state from server (for existing players)
+	fetch_world_state.rpc_id(1)
 
 
 func leave_game() -> void:
@@ -383,6 +389,9 @@ func _receive_user_id(user_id: int, online_id: String) -> void:
 	local_player_id = user_id
 	local_online_id = online_id
 	print("[NodeTunnelManager] Received user ID: ", user_id)
+
+	# Now that we have our user_id, GameManager can create our local player
+	registration_complete.emit(user_id)
 
 
 @rpc("authority", "reliable")
