@@ -7,12 +7,12 @@ var sbx_runtime = null  # Will be SbxRuntime if available
 var sbx_available := false
 
 @onready var ui_layer: CanvasLayer = $UILayer
-@onready var status_label: Label = $UILayer/GameUI/StatusLabel
-@onready var player_list: ItemList = $UILayer/GameUI/PlayerList
-@onready var host_button: Button = $UILayer/MainMenu/HostButton
-@onready var join_button: Button = $UILayer/MainMenu/JoinButton
-@onready var address_input: LineEdit = $UILayer/MainMenu/AddressInput
-@onready var name_input: LineEdit = $UILayer/MainMenu/NameInput
+@onready var status_label: Label = %StatusLabel
+@onready var player_list: ItemList = %PlayerList
+@onready var host_button: Button = %HostButton
+@onready var join_button: Button = %JoinButton
+@onready var address_input: LineEdit = %AddressInput
+@onready var name_input: LineEdit = %NameInput
 @onready var main_menu: Control = $UILayer/MainMenu
 @onready var game_ui: Control = $UILayer/GameUI
 
