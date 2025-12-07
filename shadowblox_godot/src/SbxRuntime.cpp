@@ -90,16 +90,18 @@ void SbxRuntime::_exit_tree() {
 		}
 	}
 
-	// Clear the DataModel before destroying the Luau runtime
-	// This breaks shared_ptr cycles
+	// IMPORTANT: Destroy the Luau runtime BEFORE the DataModel!
+	// When lua_close() runs, it garbage collects all userdata which have __gc
+	// metamethods. These hold shared_ptr references to Instance objects.
+	// If we destroy DataModel first, the __gc finalizers may access freed memory.
+	godot::UtilityFunctions::print("[SbxRuntime] Resetting runtime (this runs Luau GC finalizers)...");
+	runtime.reset();
+	godot::UtilityFunctions::print("[SbxRuntime] runtime reset complete");
+
+	// Now safe to clear the DataModel - Luau no longer holds references
 	godot::UtilityFunctions::print("[SbxRuntime] Resetting dataModel...");
 	dataModel.reset();
 	godot::UtilityFunctions::print("[SbxRuntime] dataModel reset complete");
-
-	// Destroy the Luau runtime
-	godot::UtilityFunctions::print("[SbxRuntime] Resetting runtime...");
-	runtime.reset();
-	godot::UtilityFunctions::print("[SbxRuntime] runtime reset complete");
 
 	godot::UtilityFunctions::print("[SbxRuntime] Resetting logger...");
 	logger.reset();
