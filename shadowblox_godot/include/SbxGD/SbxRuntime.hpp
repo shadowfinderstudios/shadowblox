@@ -52,6 +52,7 @@ public:
 	// Godot lifecycle
 	void _ready() override;
 	void _process(double delta) override;
+	void _exit_tree() override;
 
 	// Runtime access
 	SBX::LuauRuntime *get_runtime() const { return runtime.get(); }

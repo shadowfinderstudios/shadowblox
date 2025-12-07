@@ -63,20 +63,8 @@ SbxRuntime::SbxRuntime() {
 }
 
 SbxRuntime::~SbxRuntime() {
-	// Stop RunService before cleanup
-	auto runService = get_run_service();
-	if (runService) {
-		runService->Stop();
-	}
-
-	// Clear the DataModel before destroying the Luau runtime
-	// This ensures shared_ptr cycles are broken
-	dataModel.reset();
-
-	// Destroy the Luau runtime explicitly before clearing singleton
-	runtime.reset();
-	logger.reset();
-
+	// Cleanup should have already happened in _exit_tree()
+	// Just clear singleton as a safety measure
 	if (singleton == this) {
 		singleton = nullptr;
 	}
@@ -85,6 +73,32 @@ SbxRuntime::~SbxRuntime() {
 void SbxRuntime::_ready() {
 	initialize_runtime();
 	setup_data_model();
+}
+
+void SbxRuntime::_exit_tree() {
+	// This is called when the node is removed from the scene tree
+	// This happens BEFORE the destructor during normal shutdown
+
+	// Stop RunService first to prevent any more signals from firing
+	if (dataModel) {
+		auto runService = dataModel->GetRunService();
+		if (runService) {
+			runService->Stop();
+		}
+	}
+
+	// Clear the DataModel before destroying the Luau runtime
+	// This breaks shared_ptr cycles
+	dataModel.reset();
+
+	// Destroy the Luau runtime
+	runtime.reset();
+	logger.reset();
+
+	// Clear singleton
+	if (singleton == this) {
+		singleton = nullptr;
+	}
 }
 
 void SbxRuntime::_process(double delta) {
