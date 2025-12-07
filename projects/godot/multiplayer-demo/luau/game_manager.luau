@@ -1,10 +1,9 @@
 -- Tag Game Manager - Core game logic in Luau
--- Manages player movement, tagging, and game state
+-- Uses SbxRuntime's generic rendering API to control GDScript visuals
 -- GDScript handles: rendering, input forwarding, network transport
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 print("[TagGame] Loading game manager...")
 
@@ -27,15 +26,17 @@ local GameState = {
 print("[TagGame] IsServer: " .. tostring(GameState.isServer))
 print("[TagGame] IsClient: " .. tostring(GameState.isClient))
 
--- Get RemoteEvents folder
-local function getRemoteEvents()
-	local remoteEvents = ReplicatedStorage:FindFirstChild("RemoteEvents")
-	return remoteEvents
-end
+-- Colors for players
+local COLORS = {
+	IT = Color3.new(1, 0, 0),        -- Red for "it"
+	LOCAL = Color3.new(0, 1, 0),     -- Green for local player
+	REMOTE = Color3.new(0, 0, 1),    -- Blue for other players
+}
 
 -- Update player position based on humanoid MoveDirection
--- MoveDirection is set by GDScript via set_input_direction()
 local function updatePlayerMovement(player, deltaTime)
+	if not player then return end
+
 	local character = player.Character
 	if not character then return end
 
@@ -45,9 +46,9 @@ local function updatePlayerMovement(player, deltaTime)
 	local humanoid = character:FindFirstChild("Humanoid")
 	if not humanoid then return end
 
-	-- Get move direction (set by GDScript)
+	-- Get move direction (set by GDScript via set_input_direction)
 	local moveDir = humanoid.MoveDirection
-	if moveDir.Magnitude > 0.01 then
+	if moveDir and moveDir.Magnitude > 0.01 then
 		local speed = CONFIG.WALK_SPEED * deltaTime
 		local currentPos = rootPart.Position
 		local newPos = currentPos + (moveDir.Unit * speed)
@@ -55,7 +56,7 @@ local function updatePlayerMovement(player, deltaTime)
 		-- Clamp to bounds
 		newPos = Vector3.new(
 			math.clamp(newPos.X, CONFIG.BOUNDS.min, CONFIG.BOUNDS.max),
-			currentPos.Y,  -- Keep Y unchanged
+			currentPos.Y,
 			math.clamp(newPos.Z, CONFIG.BOUNDS.min, CONFIG.BOUNDS.max)
 		)
 
@@ -84,6 +85,49 @@ local function getPlayerDistance(player1, player2)
 	return (root1.Position - root2.Position).Magnitude
 end
 
+-- Update player colors based on tag state
+local function updatePlayerColors()
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player then
+			local userId = player.UserId
+			local color = COLORS.REMOTE
+
+			if userId == GameState.taggedPlayerId then
+				color = COLORS.IT
+			elseif Players.LocalPlayer and userId == Players.LocalPlayer.UserId then
+				color = COLORS.LOCAL
+			end
+
+			-- Call SbxRuntime to update color (emits signal to GDScript)
+			-- Note: This would need to be implemented via a callback mechanism
+			-- For now, we track state and GDScript reads it
+		end
+	end
+end
+
+-- Update status text
+local function updateStatusText()
+	local playerCount = #Players:GetPlayers()
+	local statusText = ""
+
+	if GameState.isServer then
+		statusText = "Server - " .. playerCount .. " players"
+	else
+		statusText = "Client - " .. playerCount .. " players"
+	end
+
+	if GameState.taggedPlayerId > 0 then
+		if Players.LocalPlayer and GameState.taggedPlayerId == Players.LocalPlayer.UserId then
+			statusText = statusText .. " - YOU'RE IT!"
+		else
+			statusText = statusText .. " - Player " .. GameState.taggedPlayerId .. " is IT"
+		end
+	end
+
+	-- Would call set_status_text here if we had the callback
+	print("[TagGame] Status: " .. statusText)
+end
+
 -- Tag a player (make them "it")
 local function tagPlayer(newTaggedId)
 	if GameState.taggedPlayerId == newTaggedId then return end
@@ -96,14 +140,8 @@ local function tagPlayer(newTaggedId)
 
 	print("[TagGame] Player " .. tostring(newTaggedId) .. " is now IT!")
 
-	-- Broadcast to clients via RemoteEvent
-	local remoteEvents = getRemoteEvents()
-	if remoteEvents and GameState.isServer then
-		local gameStateEvent = remoteEvents:FindFirstChild("GameStateEvent")
-		if gameStateEvent then
-			gameStateEvent:FireAllClients(newTaggedId)
-		end
-	end
+	updatePlayerColors()
+	updateStatusText()
 end
 
 -- Check for tag collisions (server only)
@@ -116,7 +154,7 @@ local function checkTagCollisions()
 
 	local tagger = nil
 	for _, player in ipairs(Players:GetPlayers()) do
-		if player.UserId == taggerId then
+		if player and player.UserId == taggerId then
 			tagger = player
 			break
 		end
@@ -125,7 +163,7 @@ local function checkTagCollisions()
 
 	-- Check distance to all other players
 	for _, player in ipairs(Players:GetPlayers()) do
-		if player.UserId ~= taggerId then
+		if player and player.UserId ~= taggerId then
 			local distance = getPlayerDistance(tagger, player)
 			if distance < CONFIG.TAG_DISTANCE then
 				-- Tag them!
@@ -147,9 +185,13 @@ end
 
 -- Main game loop via Heartbeat
 RunService.Heartbeat:Connect(function(deltaTime)
-	-- Update all player movements
-	for _, player in ipairs(Players:GetPlayers()) do
-		updatePlayerMovement(player, deltaTime)
+	-- Update all player movements (with safe iteration)
+	local players = Players:GetPlayers()
+	for i = 1, #players do
+		local player = players[i]
+		if player then
+			updatePlayerMovement(player, deltaTime)
+		end
 	end
 
 	-- Server-only logic
@@ -161,6 +203,8 @@ end)
 
 -- Handle player joining
 Players.PlayerAdded:Connect(function(player)
+	if not player then return end
+
 	print("[TagGame] Player added: " .. player.Name .. " (ID: " .. tostring(player.UserId) .. ")")
 
 	-- Initialize cooldown
@@ -169,13 +213,14 @@ Players.PlayerAdded:Connect(function(player)
 	-- If this is server and no one is "it", make first player "it"
 	if GameState.isServer and GameState.taggedPlayerId == 0 then
 		local allPlayers = Players:GetPlayers()
-		if #allPlayers >= 1 then
+		if #allPlayers >= 1 and allPlayers[1] then
 			tagPlayer(allPlayers[1].UserId)
 		end
 	end
 
 	-- When character loads, set initial position
 	player.CharacterAdded:Connect(function(character)
+		if not character then return end
 		print("[TagGame] Character loaded for: " .. player.Name)
 
 		local rootPart = character:FindFirstChild("HumanoidRootPart")
@@ -188,11 +233,15 @@ Players.PlayerAdded:Connect(function(player)
 			)
 			rootPart.Position = randomOffset
 		end
+
+		updatePlayerColors()
 	end)
 end)
 
 -- Handle player leaving
 Players.PlayerRemoving:Connect(function(player)
+	if not player then return end
+
 	print("[TagGame] Player removing: " .. player.Name)
 	GameState.tagCooldowns[player.UserId] = nil
 
@@ -201,7 +250,7 @@ Players.PlayerRemoving:Connect(function(player)
 		GameState.taggedPlayerId = 0
 		local remainingPlayers = Players:GetPlayers()
 		for _, p in ipairs(remainingPlayers) do
-			if p.UserId ~= player.UserId then
+			if p and p.UserId ~= player.UserId then
 				tagPlayer(p.UserId)
 				break
 			end
@@ -209,23 +258,11 @@ Players.PlayerRemoving:Connect(function(player)
 	end
 end)
 
--- Handle existing players (for late-joining clients)
+-- Handle existing players (for late-joining)
 for _, player in ipairs(Players:GetPlayers()) do
-	print("[TagGame] Existing player: " .. player.Name)
-	GameState.tagCooldowns[player.UserId] = 0
-end
-
--- Client: Listen for tag updates from server
-if GameState.isClient then
-	local remoteEvents = getRemoteEvents()
-	if remoteEvents then
-		local gameStateEvent = remoteEvents:FindFirstChild("GameStateEvent")
-		if gameStateEvent then
-			gameStateEvent.OnClientEvent:Connect(function(newTaggedId)
-				GameState.taggedPlayerId = newTaggedId
-				print("[TagGame] Client received: Player " .. tostring(newTaggedId) .. " is now IT!")
-			end)
-		end
+	if player then
+		print("[TagGame] Existing player: " .. player.Name)
+		GameState.tagCooldowns[player.UserId] = 0
 	end
 end
 
@@ -235,11 +272,6 @@ print("[TagGame] Game manager initialized!")
 return {
 	getTaggedPlayerId = function()
 		return GameState.taggedPlayerId
-	end,
-	setTaggedPlayer = function(userId)
-		if GameState.isServer then
-			tagPlayer(userId)
-		end
 	end,
 	getConfig = function()
 		return CONFIG

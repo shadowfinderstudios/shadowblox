@@ -1,8 +1,8 @@
 extends Node3D
 
-# GameManager - Thin rendering layer for the Tag game
-# Luau handles: game logic, movement, tagging
-# GDScript handles: rendering, input forwarding, network transport
+# GameManager - Generic rendering layer for shadowblox games
+# This layer is game-agnostic - Luau controls all game-specific logic
+# GDScript only handles: rendering, input forwarding, network transport
 
 var sbx_runtime = null
 var sbx_available := false
@@ -19,7 +19,7 @@ var sbx_available := false
 
 var local_player_node: Node3D = null
 var player_nodes := {}  # user_id -> Node3D
-var tagged_player_id: int = 0
+var player_materials := {}  # user_id -> StandardMaterial3D
 
 func _ready() -> void:
 	# Connect network manager signals
@@ -47,8 +47,9 @@ func _ready() -> void:
 			add_child(sbx_runtime)
 			print("[GameManager] ShadowBlox extension loaded")
 
-			# Connect to SbxRuntime signals
-			sbx_runtime.tagged_player_changed.connect(_on_tagged_player_changed)
+			# Connect to generic rendering signals from Luau
+			sbx_runtime.player_color_changed.connect(_on_player_color_changed)
+			sbx_runtime.status_text_changed.connect(_on_status_text_changed)
 
 			# Wait a frame for initialization
 			await get_tree().process_frame
@@ -95,7 +96,7 @@ func _on_host_pressed() -> void:
 			sbx_runtime.load_character(1)
 
 		_spawn_player_node(1, display_name, true)
-		status_label.text = "Hosting - Waiting for players..."
+		status_label.text = "Hosting..."
 
 func _on_join_pressed() -> void:
 	var address = address_input.text if address_input.text != "" else "127.0.0.1"
@@ -113,11 +114,9 @@ func _on_join_pressed() -> void:
 
 func _on_server_started() -> void:
 	print("[GameManager] Server started")
-	status_label.text = "Server running"
 
 func _on_client_connected() -> void:
 	print("[GameManager] Connected to server")
-	status_label.text = "Connected!"
 
 	var user_id = NetworkManager.local_player_id
 	var display_name = name_input.text if name_input.text != "" else "Player"
@@ -144,14 +143,12 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 		_spawn_player_node(user_id, display_name, is_local)
 
 	_update_player_list()
-	_update_status()
 
 func _on_existing_player(user_id: int, display_name: String) -> void:
 	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ")")
 	if not player_nodes.has(user_id):
 		_spawn_player_node(user_id, display_name, false)
 	_update_player_list()
-	_update_status()
 
 func _on_player_left(user_id: int) -> void:
 	print("[GameManager] Player left: ", user_id)
@@ -163,21 +160,26 @@ func _on_player_left(user_id: int) -> void:
 		player_nodes[user_id].queue_free()
 		player_nodes.erase(user_id)
 
+	if player_materials.has(user_id):
+		player_materials.erase(user_id)
+
 	_update_player_list()
-	_update_status()
 
-func _on_tagged_player_changed(old_id: int, new_id: int) -> void:
-	tagged_player_id = new_id
-	print("[GameManager] Tagged player changed: ", old_id, " -> ", new_id)
+# Generic signal handlers - Luau controls rendering through these
+func _on_player_color_changed(user_id: int, color: Color) -> void:
+	if player_materials.has(user_id):
+		player_materials[user_id].albedo_color = color
 
-	# Sync to clients via RPC
+	# Sync color to clients via RPC
 	if NetworkManager.is_server:
-		_sync_tagged_player.rpc(new_id)
+		_sync_player_color.rpc(user_id, color)
 
-	# Update visuals
-	_update_player_color(old_id)
-	_update_player_color(new_id)
-	_update_status()
+func _on_status_text_changed(text: String) -> void:
+	status_label.text = text
+
+	# Sync status to clients via RPC
+	if NetworkManager.is_server:
+		_sync_status_text.rpc(text)
 
 func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> void:
 	var player_node = Node3D.new()
@@ -191,9 +193,11 @@ func _spawn_player_node(user_id: int, display_name: String, is_local: bool) -> v
 	body.mesh = capsule
 	body.name = "Body"
 
+	# Create material (default colors, Luau will override via set_player_color)
 	var material = StandardMaterial3D.new()
 	material.albedo_color = Color.GREEN if is_local else Color.BLUE
 	body.material_override = material
+	player_materials[user_id] = material
 
 	player_node.add_child(body)
 
@@ -298,15 +302,13 @@ func _broadcast_position(user_id: int, pos: Vector3) -> void:
 		sbx_runtime.set_player_position(user_id, pos)
 
 @rpc("authority", "reliable", "call_local")
-func _sync_tagged_player(new_tagged_id: int) -> void:
-	tagged_player_id = new_tagged_id
-	if sbx_runtime and sbx_available:
-		sbx_runtime.set_tagged_player(new_tagged_id)
+func _sync_player_color(user_id: int, color: Color) -> void:
+	if player_materials.has(user_id):
+		player_materials[user_id].albedo_color = color
 
-	# Update all player colors
-	for user_id in player_nodes:
-		_update_player_color(user_id)
-	_update_status()
+@rpc("authority", "reliable", "call_local")
+func _sync_status_text(text: String) -> void:
+	status_label.text = text
 
 func _update_player_list() -> void:
 	player_list.clear()
@@ -314,49 +316,11 @@ func _update_player_list() -> void:
 		var name_text = "Player " + str(user_id)
 		if user_id == NetworkManager.local_player_id:
 			name_text += " (You)"
-		if user_id == tagged_player_id:
-			name_text += " [IT]"
 		player_list.add_item(name_text)
-
-func _update_status() -> void:
-	var player_count = player_nodes.size()
-	var it_text = ""
-	if tagged_player_id == NetworkManager.local_player_id:
-		it_text = " - YOU'RE IT!"
-	elif tagged_player_id > 0:
-		it_text = " - Player " + str(tagged_player_id) + " is IT"
-
-	if NetworkManager.is_server:
-		status_label.text = "Server - " + str(player_count) + " players" + it_text
-	else:
-		status_label.text = "Client - " + str(player_count) + " players" + it_text
-
-func _update_player_color(user_id: int) -> void:
-	if not player_nodes.has(user_id):
-		return
-
-	var player_node = player_nodes[user_id]
-	var body = player_node.get_node_or_null("Body")
-	if not body:
-		return
-
-	var material = body.material_override as StandardMaterial3D
-	if not material:
-		return
-
-	var is_local = (user_id == NetworkManager.local_player_id)
-	var is_it = (user_id == tagged_player_id)
-
-	if is_it:
-		material.albedo_color = Color.RED
-	elif is_local:
-		material.albedo_color = Color.GREEN
-	else:
-		material.albedo_color = Color.BLUE
 
 func _cleanup_game() -> void:
 	for user_id in player_nodes:
 		player_nodes[user_id].queue_free()
 	player_nodes.clear()
+	player_materials.clear()
 	local_player_node = null
-	tagged_player_id = 0

@@ -110,9 +110,9 @@ public:
 	void set_player_position(int64_t user_id, godot::Vector3 position);
 	godot::Dictionary get_all_player_positions() const;
 
-	// Tag game state (stored in C++ for now, could move to Luau later)
-	void set_tagged_player(int64_t user_id);
-	int64_t get_tagged_player() const { return taggedPlayerId; }
+	// Generic rendering control - Luau tells GDScript what to render
+	void set_player_color(int64_t user_id, godot::Color color);
+	void set_status_text(const godot::String &text);
 
 protected:
 	static void _bind_methods();
@@ -125,7 +125,6 @@ private:
 	double elapsedTime = 0.0;
 	bool isServer = true;
 	bool isClient = false;
-	int64_t taggedPlayerId = 0;
 
 	static SbxRuntime *singleton;
 

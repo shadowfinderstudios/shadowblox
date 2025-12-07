@@ -20,6 +20,7 @@
 #include "godot_cpp/variant/utility_functions.hpp"
 #include "godot_cpp/variant/vector3.hpp"
 #include "godot_cpp/variant/dictionary.hpp"
+#include "godot_cpp/variant/color.hpp"
 
 #include "Luau/Compiler.h"
 #include "lua.h"
@@ -505,11 +506,12 @@ godot::Dictionary SbxRuntime::get_all_player_positions() const {
 	return result;
 }
 
-void SbxRuntime::set_tagged_player(int64_t user_id) {
-	int64_t oldTagged = taggedPlayerId;
-	taggedPlayerId = user_id;
-	godot::UtilityFunctions::print("[SbxRuntime] Tagged player set to: ", user_id);
-	emit_signal("tagged_player_changed", oldTagged, user_id);
+void SbxRuntime::set_player_color(int64_t user_id, godot::Color color) {
+	emit_signal("player_color_changed", user_id, color);
+}
+
+void SbxRuntime::set_status_text(const godot::String &text) {
+	emit_signal("status_text_changed", text);
 }
 
 void SbxRuntime::_bind_methods() {
@@ -536,9 +538,9 @@ void SbxRuntime::_bind_methods() {
 	godot::ClassDB::bind_method(godot::D_METHOD("set_player_position", "user_id", "position"), &SbxRuntime::set_player_position);
 	godot::ClassDB::bind_method(godot::D_METHOD("get_all_player_positions"), &SbxRuntime::get_all_player_positions);
 
-	// Tag game state methods
-	godot::ClassDB::bind_method(godot::D_METHOD("set_tagged_player", "user_id"), &SbxRuntime::set_tagged_player);
-	godot::ClassDB::bind_method(godot::D_METHOD("get_tagged_player"), &SbxRuntime::get_tagged_player);
+	// Generic rendering control methods - Luau controls what GDScript renders
+	godot::ClassDB::bind_method(godot::D_METHOD("set_player_color", "user_id", "color"), &SbxRuntime::set_player_color);
+	godot::ClassDB::bind_method(godot::D_METHOD("set_status_text", "text"), &SbxRuntime::set_status_text);
 
 	// Signals for network communication
 	ADD_SIGNAL(godot::MethodInfo("network_event_to_server",
@@ -556,9 +558,13 @@ void SbxRuntime::_bind_methods() {
 			godot::PropertyInfo(godot::Variant::STRING, "display_name")));
 	ADD_SIGNAL(godot::MethodInfo("player_removing",
 			godot::PropertyInfo(godot::Variant::INT, "user_id")));
-	ADD_SIGNAL(godot::MethodInfo("tagged_player_changed",
-			godot::PropertyInfo(godot::Variant::INT, "old_tagged_id"),
-			godot::PropertyInfo(godot::Variant::INT, "new_tagged_id")));
+
+	// Generic rendering control signals - Luau tells GDScript what to render
+	ADD_SIGNAL(godot::MethodInfo("player_color_changed",
+			godot::PropertyInfo(godot::Variant::INT, "user_id"),
+			godot::PropertyInfo(godot::Variant::COLOR, "color")));
+	ADD_SIGNAL(godot::MethodInfo("status_text_changed",
+			godot::PropertyInfo(godot::Variant::STRING, "text")));
 }
 
 } // namespace SbxGD
