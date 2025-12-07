@@ -27,6 +27,9 @@ namespace SBX::Classes {
 class Instance;
 class Part;
 class Model;
+class DataModel;
+class Workspace;
+class RunService;
 }
 
 namespace SBX::DataTypes {
@@ -69,5 +72,31 @@ void Model_TranslateBy(Classes::Model *model, double x, double y, double z);
 // Instance hierarchy
 void Instance_SetParent(Classes::Instance *child, std::shared_ptr<Classes::Instance> parent);
 std::shared_ptr<Classes::Instance> Instance_GetParent(Classes::Instance *instance);
+
+// DataModel creation and access
+std::shared_ptr<Classes::DataModel> CreateDataModel();
+std::shared_ptr<Classes::Workspace> DataModel_GetWorkspace(Classes::DataModel *dataModel);
+std::shared_ptr<Classes::RunService> DataModel_GetRunService(Classes::DataModel *dataModel);
+std::shared_ptr<Classes::Instance> DataModel_GetService(Classes::DataModel *dataModel, const char *serviceName);
+
+// Workspace creation
+std::shared_ptr<Classes::Workspace> CreateWorkspace();
+void Workspace_GetGravity(Classes::Workspace *workspace, double *x, double *y, double *z);
+void Workspace_SetGravity(Classes::Workspace *workspace, double x, double y, double z);
+
+// RunService creation and control
+std::shared_ptr<Classes::RunService> CreateRunService();
+void RunService_FireStepped(Classes::RunService *runService, double time, double deltaTime);
+void RunService_FireHeartbeat(Classes::RunService *runService, double deltaTime);
+void RunService_FireRenderStepped(Classes::RunService *runService, double deltaTime);
+void RunService_Run(Classes::RunService *runService);
+void RunService_Pause(Classes::RunService *runService);
+void RunService_Stop(Classes::RunService *runService);
+bool RunService_IsRunning(Classes::RunService *runService);
+void RunService_SetIsClient(Classes::RunService *runService, bool isClient);
+void RunService_SetIsServer(Classes::RunService *runService, bool isServer);
+
+// Register game/workspace globals in Lua state
+void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel);
 
 } // namespace SBX::Bridge
