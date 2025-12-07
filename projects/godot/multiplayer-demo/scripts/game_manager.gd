@@ -21,59 +21,39 @@ var player_nodes := {}  # user_id -> Node3D
 var game_started := false
 
 func _ready() -> void:
-	print("[GameManager] _ready() starting...")
-
 	# Connect network manager signals
-	print("[GameManager] Connecting NetworkManager signals...")
 	NetworkManager.server_started.connect(_on_server_started)
 	NetworkManager.client_connected.connect(_on_client_connected)
 	NetworkManager.client_disconnected.connect(_on_client_disconnected)
 	NetworkManager.player_joined.connect(_on_player_joined)
 	NetworkManager.player_left.connect(_on_player_left)
-	print("[GameManager] NetworkManager signals connected")
 
 	# Connect UI buttons
-	print("[GameManager] Connecting UI buttons...")
 	host_button.pressed.connect(_on_host_pressed)
 	join_button.pressed.connect(_on_join_pressed)
-	print("[GameManager] UI buttons connected")
 
 	# Initially show main menu
 	main_menu.visible = true
 	game_ui.visible = false
 
 	# Check if SbxRuntime is available (extension loaded)
-	print("[GameManager] Checking ClassDB.class_exists('SbxRuntime')...")
 	if ClassDB.class_exists("SbxRuntime"):
-		print("[GameManager] SbxRuntime class EXISTS in ClassDB")
 		sbx_available = true
 		# Create SbxRuntime dynamically to avoid scene-load crashes
-		print("[GameManager] About to call ClassDB.instantiate('SbxRuntime')...")
 		sbx_runtime = ClassDB.instantiate("SbxRuntime")
-		print("[GameManager] ClassDB.instantiate returned: ", sbx_runtime)
 		if sbx_runtime:
-			print("[GameManager] Setting sbx_runtime.name...")
 			sbx_runtime.name = "SbxRuntime"
-			print("[GameManager] About to call add_child(sbx_runtime)...")
 			add_child(sbx_runtime)
-			print("[GameManager] add_child completed - SbxRuntime is now in scene tree")
 			print("[GameManager] ShadowBlox extension loaded - using Luau integration")
 			# Wait a frame for SbxRuntime to initialize
-			print("[GameManager] Waiting one frame before _setup_luau_game...")
 			await get_tree().process_frame
-			print("[GameManager] Frame complete, calling _setup_luau_game...")
 			_setup_luau_game()
-			print("[GameManager] _setup_luau_game completed")
 		else:
-			print("[GameManager] Failed to instantiate SbxRuntime (returned null)")
+			print("[GameManager] Failed to instantiate SbxRuntime")
 			sbx_available = false
 	else:
-		print("[GameManager] SbxRuntime class NOT found in ClassDB")
 		print("[GameManager] ShadowBlox extension not available")
 		print("[GameManager] To build: cd shadowblox_godot && scons platform=windows target=template_debug")
-		print("[GameManager] Game will run without Luau scripting")
-
-	print("[GameManager] _ready() finished")
 
 func _setup_luau_game() -> void:
 	# Load and execute the game initialization script
