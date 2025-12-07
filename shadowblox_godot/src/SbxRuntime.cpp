@@ -42,6 +42,7 @@
 #include "Sbx/Runtime/Base.hpp"
 #include "Sbx/Runtime/LuauRuntime.hpp"
 #include "Sbx/Runtime/Logger.hpp"
+#include "Sbx/Runtime/SignalEmitter.hpp"
 #include "Sbx/Runtime/Stack.hpp"
 
 namespace SbxGD {
@@ -90,15 +91,17 @@ void SbxRuntime::_exit_tree() {
 		}
 	}
 
-	// IMPORTANT: Destroy the Luau runtime BEFORE the DataModel!
-	// When lua_close() runs, it garbage collects all userdata which have __gc
-	// metamethods. These hold shared_ptr references to Instance objects.
-	// If we destroy DataModel first, the __gc finalizers may access freed memory.
-	godot::UtilityFunctions::print("[SbxRuntime] Resetting runtime (this runs Luau GC finalizers)...");
+	// Enable shutdown mode - this prevents SignalEmitter from accessing
+	// lua_State pointers during Instance destruction
+	godot::UtilityFunctions::print("[SbxRuntime] Enabling shutdown mode...");
+	SBX::SignalEmitter::SetShutdownMode(true);
+
+	// Destroy the Luau runtime first
+	godot::UtilityFunctions::print("[SbxRuntime] Resetting runtime...");
 	runtime.reset();
 	godot::UtilityFunctions::print("[SbxRuntime] runtime reset complete");
 
-	// Now safe to clear the DataModel - Luau no longer holds references
+	// Now safe to clear the DataModel - signal emission is disabled
 	godot::UtilityFunctions::print("[SbxRuntime] Resetting dataModel...");
 	dataModel.reset();
 	godot::UtilityFunctions::print("[SbxRuntime] dataModel reset complete");
