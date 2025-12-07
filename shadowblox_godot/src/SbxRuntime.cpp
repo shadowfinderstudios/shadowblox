@@ -64,8 +64,11 @@ SbxRuntime::~SbxRuntime() {
 }
 
 void SbxRuntime::_ready() {
+	godot::UtilityFunctions::print("[SbxRuntime] _ready() starting...");
 	initialize_runtime();
+	godot::UtilityFunctions::print("[SbxRuntime] initialize_runtime() completed, calling setup_data_model()...");
 	setup_data_model();
+	godot::UtilityFunctions::print("[SbxRuntime] _ready() finished");
 }
 
 void SbxRuntime::_process(double delta) {
@@ -82,28 +85,41 @@ void SbxRuntime::_process(double delta) {
 
 void SbxRuntime::initialize_runtime() {
 	if (initialized) {
+		godot::UtilityFunctions::print("[SbxRuntime] Already initialized, skipping");
 		return;
 	}
 
+	godot::UtilityFunctions::print("[SbxRuntime] Calling InitializeAllClasses...");
 	// Initialize shadowblox classes via bridge
 	SBX::Bridge::InitializeAllClasses();
+	godot::UtilityFunctions::print("[SbxRuntime] InitializeAllClasses completed");
 
+	godot::UtilityFunctions::print("[SbxRuntime] Creating LuauRuntime...");
 	// Create the Luau runtime
 	runtime = std::make_unique<SBX::LuauRuntime>(runtime_init_callback);
+	godot::UtilityFunctions::print("[SbxRuntime] LuauRuntime created");
 
 	initialized = true;
 	godot::UtilityFunctions::print("[SbxRuntime] Luau runtime initialized");
 }
 
 void SbxRuntime::setup_data_model() {
-	if (!runtime) return;
+	godot::UtilityFunctions::print("[SbxRuntime] setup_data_model() starting...");
+	if (!runtime) {
+		godot::UtilityFunctions::print("[SbxRuntime] ERROR: runtime is null!");
+		return;
+	}
 
+	godot::UtilityFunctions::print("[SbxRuntime] Creating DataModel...");
 	// Create DataModel (the 'game' object)
 	dataModel = SBX::Bridge::CreateDataModel();
+	godot::UtilityFunctions::print("[SbxRuntime] DataModel created, getting VM...");
 
 	// Get the VM and register globals
 	lua_State *L = runtime->GetVM(SBX::UserVM);
+	godot::UtilityFunctions::print("[SbxRuntime] Got VM, registering globals...");
 	SBX::Bridge::RegisterGlobals(L, dataModel);
+	godot::UtilityFunctions::print("[SbxRuntime] Globals registered");
 
 	godot::UtilityFunctions::print("[SbxRuntime] DataModel created - game, workspace, Players available");
 }
