@@ -42,14 +42,12 @@ else:
 env.Append(CPPPATH=["src/", "include/"])
 sources = Glob("src/*.cpp")
 
-# Link shadowblox and luau libraries
-env.Append(LIBPATH=["../shadowblox/"])
-env.Append(LIBPATH=["../extern/"])
-if env["platform"] == "windows":
-    # MSVC uses .lib files
-    env.Append(LIBS=["shadowblox.lib", "luau.lib"])
-else:
-    env.Append(LIBS=["shadowblox", "luau"])
+# Link shadowblox and luau libraries using absolute paths
+root_dir = Dir("..").abspath
+env.Append(LIBPATH=[os.path.join(root_dir, "shadowblox")])
+env.Append(LIBPATH=[os.path.join(root_dir, "extern")])
+# SCons handles library naming conventions (lib prefix, .a/.lib suffix) automatically
+env.Append(LIBS=["shadowblox", "luau"])
 
 # Add include paths (both include and src directories for Luau)
 env.Append(CPPPATH=[
