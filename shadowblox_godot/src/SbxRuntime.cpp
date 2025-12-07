@@ -63,6 +63,20 @@ SbxRuntime::SbxRuntime() {
 }
 
 SbxRuntime::~SbxRuntime() {
+	// Stop RunService before cleanup
+	auto runService = get_run_service();
+	if (runService) {
+		runService->Stop();
+	}
+
+	// Clear the DataModel before destroying the Luau runtime
+	// This ensures shared_ptr cycles are broken
+	dataModel.reset();
+
+	// Destroy the Luau runtime explicitly before clearing singleton
+	runtime.reset();
+	logger.reset();
+
 	if (singleton == this) {
 		singleton = nullptr;
 	}
