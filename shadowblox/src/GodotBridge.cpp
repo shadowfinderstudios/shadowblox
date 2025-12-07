@@ -22,7 +22,10 @@
 #include "Sbx/Classes/Model.hpp"
 #include "Sbx/Classes/Object.hpp"
 #include "Sbx/Classes/Part.hpp"
+#include "Sbx/Classes/Player.hpp"
+#include "Sbx/Classes/Players.hpp"
 #include "Sbx/Classes/RunService.hpp"
+#include "Sbx/Classes/Script.hpp"
 #include "Sbx/Classes/Workspace.hpp"
 #include "Sbx/DataTypes/Types.hpp"
 #include "Sbx/DataTypes/Vector3.hpp"
@@ -38,6 +41,11 @@ void InitializeAllClasses() {
 	Classes::DataModel::InitializeClass();
 	Classes::Workspace::InitializeClass();
 	Classes::RunService::InitializeClass();
+	Classes::Player::InitializeClass();
+	Classes::Players::InitializeClass();
+	Classes::Script::InitializeClass();
+	Classes::LocalScript::InitializeClass();
+	Classes::ModuleScript::InitializeClass();
 }
 
 void RegisterAllClasses(lua_State *L) {
@@ -271,13 +279,65 @@ void RunService_SetIsServer(Classes::RunService *runService, bool isServer) {
 	if (runService) runService->SetIsServer(isServer);
 }
 
+// Players functions
+std::shared_ptr<Classes::Players> DataModel_GetPlayers(Classes::DataModel *dataModel) {
+	if (!dataModel) return nullptr;
+	return std::dynamic_pointer_cast<Classes::Players>(dataModel->GetService("Players"));
+}
+
+std::shared_ptr<Classes::Player> Players_CreateLocalPlayer(Classes::Players *players, int64_t userId, const char *displayName) {
+	if (!players) return nullptr;
+	return players->CreateLocalPlayer(userId, displayName);
+}
+
+std::shared_ptr<Classes::Player> Players_GetLocalPlayer(Classes::Players *players) {
+	if (!players) return nullptr;
+	return players->GetLocalPlayer();
+}
+
+void Player_SetCharacter(Classes::Player *player, std::shared_ptr<Classes::Model> character) {
+	if (player) player->SetCharacter(character);
+}
+
+std::shared_ptr<Classes::Model> Player_GetCharacter(Classes::Player *player) {
+	if (!player) return nullptr;
+	return player->GetCharacter();
+}
+
+// Script functions
+std::shared_ptr<Classes::Script> CreateScript() {
+	auto script = std::make_shared<Classes::Script>();
+	script->SetSelf(script);
+	return script;
+}
+
+void Script_SetSource(Classes::Script *script, const char *source) {
+	if (script) script->SetSource(source);
+}
+
+const char *Script_GetSource(Classes::Script *script) {
+	if (!script) return "";
+	return script->GetSource();
+}
+
+void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script) {
+	if (!L) return;
+	if (script) {
+		LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, script);
+	} else {
+		lua_pushnil(L);
+	}
+	lua_setglobal(L, "script");
+}
+
 // Register game/workspace globals
 void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel) {
 	if (!L || !dataModel) return;
 
-	// Ensure Workspace and RunService are created
+	// Ensure services are created
 	auto workspace = dataModel->GetWorkspace();
 	dataModel->GetRunService();
+	dataModel->GetService("Players");
 
 	// Push game (DataModel) global
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);

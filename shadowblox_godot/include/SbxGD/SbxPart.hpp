@@ -18,6 +18,9 @@
 
 #include "godot_cpp/classes/mesh_instance3d.hpp"
 #include "godot_cpp/classes/box_mesh.hpp"
+#include "godot_cpp/classes/box_shape3d.hpp"
+#include "godot_cpp/classes/area3d.hpp"
+#include "godot_cpp/classes/collision_shape3d.hpp"
 #include "godot_cpp/classes/standard_material3d.hpp"
 #include "godot_cpp/core/class_db.hpp"
 
@@ -74,6 +77,10 @@ public:
 	// Sync all properties from Godot to shadowblox
 	void sync_to_sbx();
 
+	// Collision callbacks
+	void _on_area_entered(godot::Area3D *area);
+	void _on_area_exited(godot::Area3D *area);
+
 protected:
 	static void _bind_methods();
 
@@ -82,8 +89,15 @@ private:
 	godot::Ref<godot::BoxMesh> box_mesh;
 	godot::Ref<godot::StandardMaterial3D> material;
 
+	// Collision detection
+	godot::Area3D *collision_area = nullptr;
+	godot::CollisionShape3D *collision_shape = nullptr;
+	godot::Ref<godot::BoxShape3D> box_shape;
+
 	void setup_mesh();
+	void setup_collision();
 	void update_mesh_size();
+	void update_collision_shape();
 	void update_material();
 };
 

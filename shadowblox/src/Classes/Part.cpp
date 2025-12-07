@@ -113,4 +113,16 @@ bool Part::PartNewindexOverride(lua_State *L, const char *propName) {
 	return false; // Not handled
 }
 
+void Part::FireTouched(std::shared_ptr<Part> otherPart) {
+	if (canTouch && otherPart && otherPart->GetCanTouch()) {
+		Emit<Part>("Touched", otherPart);
+	}
+}
+
+void Part::FireTouchEnded(std::shared_ptr<Part> otherPart) {
+	if (canTouch && otherPart && otherPart->GetCanTouch()) {
+		Emit<Part>("TouchEnded", otherPart);
+	}
+}
+
 } //namespace SBX::Classes

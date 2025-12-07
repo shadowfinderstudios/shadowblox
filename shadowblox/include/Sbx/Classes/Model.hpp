@@ -20,12 +20,10 @@
 #include "lua.h"
 
 #include "Sbx/Classes/Instance.hpp"
+#include "Sbx/Classes/Part.hpp"
 #include "Sbx/DataTypes/Vector3.hpp"
 
 namespace SBX::Classes {
-
-// Forward declaration
-class Part;
 
 /**
  * @brief This class implements a basic version of Roblox's [`Model`](https://create.roblox.com/docs/reference/engine/classes/Model)

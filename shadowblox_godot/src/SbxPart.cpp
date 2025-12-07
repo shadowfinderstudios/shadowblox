@@ -30,6 +30,7 @@ SbxPart::~SbxPart() {
 
 void SbxPart::_ready() {
 	setup_mesh();
+	setup_collision();
 	sync_from_sbx();
 }
 
@@ -56,6 +57,38 @@ void SbxPart::setup_mesh() {
 	material.instantiate();
 	material->set_shading_mode(godot::StandardMaterial3D::SHADING_MODE_PER_PIXEL);
 	set_surface_override_material(0, material);
+}
+
+void SbxPart::setup_collision() {
+	// Create Area3D for collision detection (Touched events)
+	collision_area = memnew(godot::Area3D);
+	collision_area->set_name("TouchArea");
+	add_child(collision_area);
+
+	// Create BoxShape3D
+	box_shape.instantiate();
+
+	// Create CollisionShape3D and attach the shape
+	collision_shape = memnew(godot::CollisionShape3D);
+	collision_shape->set_name("TouchShape");
+	collision_shape->set_shape(box_shape);
+	collision_area->add_child(collision_shape);
+
+	// Connect signals
+	collision_area->connect("area_entered", godot::Callable(this, "_on_area_entered"));
+	collision_area->connect("area_exited", godot::Callable(this, "_on_area_exited"));
+
+	// Initial size sync
+	update_collision_shape();
+}
+
+void SbxPart::update_collision_shape() {
+	if (!box_shape.is_valid()) {
+		return;
+	}
+
+	godot::Vector3 size = get_sbx_size();
+	box_shape->set_size(size);
 }
 
 void SbxPart::update_mesh_size() {
@@ -198,6 +231,7 @@ void SbxPart::sync_from_sbx() {
 
 	// Sync size
 	update_mesh_size();
+	update_collision_shape();
 
 	// Sync material (transparency)
 	update_material();
@@ -211,6 +245,32 @@ void SbxPart::sync_to_sbx() {
 	// Sync position from Godot to shadowblox
 	godot::Vector3 pos = get_position();
 	part->SetPosition(SBX::DataTypes::Vector3(pos.x, pos.y, pos.z));
+}
+
+void SbxPart::_on_area_entered(godot::Area3D *area) {
+	if (!part) {
+		return;
+	}
+
+	// Find if this area belongs to another SbxPart
+	godot::Node *parent = area->get_parent();
+	SbxPart *other_sbx_part = godot::Object::cast_to<SbxPart>(parent);
+	if (other_sbx_part && other_sbx_part->part) {
+		part->FireTouched(other_sbx_part->part);
+	}
+}
+
+void SbxPart::_on_area_exited(godot::Area3D *area) {
+	if (!part) {
+		return;
+	}
+
+	// Find if this area belongs to another SbxPart
+	godot::Node *parent = area->get_parent();
+	SbxPart *other_sbx_part = godot::Object::cast_to<SbxPart>(parent);
+	if (other_sbx_part && other_sbx_part->part) {
+		part->FireTouchEnded(other_sbx_part->part);
+	}
 }
 
 void SbxPart::_bind_methods() {
@@ -266,6 +326,10 @@ void SbxPart::_bind_methods() {
 	// Sync methods
 	godot::ClassDB::bind_method(godot::D_METHOD("sync_from_sbx"), &SbxPart::sync_from_sbx);
 	godot::ClassDB::bind_method(godot::D_METHOD("sync_to_sbx"), &SbxPart::sync_to_sbx);
+
+	// Collision callbacks
+	godot::ClassDB::bind_method(godot::D_METHOD("_on_area_entered", "area"), &SbxPart::_on_area_entered);
+	godot::ClassDB::bind_method(godot::D_METHOD("_on_area_exited", "area"), &SbxPart::_on_area_exited);
 }
 
 } // namespace SbxGD

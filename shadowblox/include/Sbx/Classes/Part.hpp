@@ -59,6 +59,10 @@ public:
 	bool GetCanTouch() const { return canTouch; }
 	void SetCanTouch(bool value);
 
+	// Fire Touched/TouchEnded signals (called from engine when collision detected)
+	void FireTouched(std::shared_ptr<Part> otherPart);
+	void FireTouchEnded(std::shared_ptr<Part> otherPart);
+
 	// Luau property accessors (for Vector3 properties that need special handling)
 	static int GetSizeLuau(lua_State *L);
 	static int SetSizeLuau(lua_State *L);

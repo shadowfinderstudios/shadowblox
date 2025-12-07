@@ -20,6 +20,7 @@
 #include "lualib.h"
 
 #include "Sbx/Classes/ClassDB.hpp"
+#include "Sbx/Classes/Players.hpp"
 #include "Sbx/Classes/RunService.hpp"
 #include "Sbx/Classes/Workspace.hpp"
 #include "Sbx/Runtime/Stack.hpp"
@@ -70,6 +71,11 @@ std::shared_ptr<Instance> DataModel::GetService(const char *className) {
 		rs->SetSelf(rs);
 		rs->SetParent(GetSelf());
 		service = rs;
+	} else if (std::strcmp(className, "Players") == 0) {
+		auto ps = std::make_shared<Players>();
+		ps->SetSelf(ps);
+		ps->SetParent(GetSelf());
+		service = ps;
 	} else {
 		// Generic service creation would go here
 		return nullptr;

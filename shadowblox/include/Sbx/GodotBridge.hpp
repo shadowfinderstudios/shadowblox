@@ -30,6 +30,9 @@ class Model;
 class DataModel;
 class Workspace;
 class RunService;
+class Player;
+class Players;
+class Script;
 }
 
 namespace SBX::DataTypes {
@@ -98,5 +101,20 @@ void RunService_SetIsServer(Classes::RunService *runService, bool isServer);
 
 // Register game/workspace globals in Lua state
 void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel);
+
+// Players functions
+std::shared_ptr<Classes::Players> DataModel_GetPlayers(Classes::DataModel *dataModel);
+std::shared_ptr<Classes::Player> Players_CreateLocalPlayer(Classes::Players *players, int64_t userId, const char *displayName);
+std::shared_ptr<Classes::Player> Players_GetLocalPlayer(Classes::Players *players);
+void Player_SetCharacter(Classes::Player *player, std::shared_ptr<Classes::Model> character);
+std::shared_ptr<Classes::Model> Player_GetCharacter(Classes::Player *player);
+
+// Script functions
+std::shared_ptr<Classes::Script> CreateScript();
+void Script_SetSource(Classes::Script *script, const char *source);
+const char *Script_GetSource(Classes::Script *script);
+
+// Set the 'script' global for running scripts
+void RegisterScriptGlobal(lua_State *L, std::shared_ptr<Classes::Script> script);
 
 } // namespace SBX::Bridge
