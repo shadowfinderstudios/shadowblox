@@ -150,18 +150,18 @@ func _on_player_joined(user_id: int, display_name: String) -> void:
 
 	_update_player_list()
 
-func _on_existing_player(user_id: int, display_name: String, position: Vector3) -> void:
-	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ") at ", position)
+func _on_existing_player(user_id: int, display_name: String, initial_pos: Vector3) -> void:
+	print("[GameManager] Existing player: ", display_name, " (ID: ", user_id, ") at ", initial_pos)
 
 	# Create existing players in Luau for position sync
 	if sbx_runtime and sbx_available:
 		sbx_runtime.create_player(user_id, display_name)
 		sbx_runtime.load_character(user_id)
 		# Set the initial position in Luau
-		sbx_runtime.set_player_position(user_id, position)
+		sbx_runtime.set_player_position(user_id, initial_pos)
 
 	if not player_nodes.has(user_id):
-		_spawn_player_node(user_id, display_name, false, position)
+		_spawn_player_node(user_id, display_name, false, initial_pos)
 	_update_player_list()
 
 func _on_player_left(user_id: int) -> void:
