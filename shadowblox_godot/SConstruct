@@ -13,11 +13,11 @@ is_windows = platform == "windows" or (platform == "" and sys.platform == "win32
 # Build the shadowblox library first
 print("Building shadowblox library...")
 if is_windows:
-    # Use MSVC on Windows
-    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4", "toolchain=msvc"], check=True)
+    # Use MSVC on Windows, skip tests (doctest has MSVC compatibility issues)
+    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4", "toolchain=msvc", "skip_tests=yes"], check=True)
 else:
-    # Use clang on other platforms
-    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4"], check=True)
+    # Use clang on other platforms, skip tests for GDExtension builds
+    subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4", "skip_tests=yes"], check=True)
 
 # Set compiler options for godot-cpp
 if not is_windows:

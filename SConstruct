@@ -30,6 +30,14 @@ opts.Add(
     )
 )
 
+opts.Add(
+    BoolVariable(
+        key="skip_tests",
+        help="Skip building tests (useful for GDExtension builds)",
+        default=False,
+    )
+)
+
 opts.Update(env_base)
 
 if env_base["toolchain"] == "gcc":
@@ -96,7 +104,8 @@ Export(["luau_lib", "luau_includes"])
 shadowblox_lib, shadowblox_includes = SConscript("shadowblox/SCSub")
 Export(["shadowblox_lib", "shadowblox_includes"])
 
-SConscript("shadowblox_tests/SCSub")
+if not env_base["skip_tests"]:
+    SConscript("shadowblox_tests/SCSub")
 
 # TODO: GDExtension should invoke this SCons script, not the other way around
 # SConscript("shadowblox_godot/SCSub")
