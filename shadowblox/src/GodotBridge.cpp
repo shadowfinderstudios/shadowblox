@@ -376,14 +376,40 @@ void RegisterGlobals(lua_State *L, std::shared_ptr<Classes::DataModel> dataModel
 	// dataModel->GetService("StarterGui");
 	// dataModel->GetService("StarterPlayer");
 
+	// DEBUG: Test basic Lua operations first
+	printf("[RegisterGlobals] Testing basic Lua ops - pushing nil...\n");
+	fflush(stdout);
+	lua_pushnil(L);
+	printf("[RegisterGlobals] Pushed nil, stack size = %d\n", lua_gettop(L));
+	fflush(stdout);
+	lua_setglobal(L, "_test_nil");
+	printf("[RegisterGlobals] Set _test_nil global OK\n");
+	fflush(stdout);
+
+	printf("[RegisterGlobals] Testing string global...\n");
+	fflush(stdout);
+	lua_pushstring(L, "test");
+	lua_setglobal(L, "_test_string");
+	printf("[RegisterGlobals] Set _test_string global OK\n");
+	fflush(stdout);
+
 	printf("[RegisterGlobals] About to push DataModel to Lua...\n");
 	fflush(stdout);
+	printf("[RegisterGlobals] DataModel className = %s\n", dataModel->GetClassName());
+	fflush(stdout);
+
 	// Push game (DataModel) global
+	printf("[RegisterGlobals] Calling LuauStackOp::Push...\n");
+	fflush(stdout);
 	LuauStackOp<std::shared_ptr<Classes::Instance>>::Push(L, dataModel);
-	printf("[RegisterGlobals] DataModel pushed, setting global 'game'...\n");
+	printf("[RegisterGlobals] LuauStackOp::Push returned, stack size = %d\n", lua_gettop(L));
+	fflush(stdout);
+	printf("[RegisterGlobals] Type at top = %s\n", lua_typename(L, lua_type(L, -1)));
+	fflush(stdout);
+	printf("[RegisterGlobals] Now calling lua_setglobal for 'game'...\n");
 	fflush(stdout);
 	lua_setglobal(L, "game");
-	printf("[RegisterGlobals] 'game' global set\n");
+	printf("[RegisterGlobals] 'game' global set OK!\n");
 	fflush(stdout);
 
 	// Also set as "Game" for compatibility
