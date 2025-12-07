@@ -1,21 +1,20 @@
 # -*- mode: python -*-
+# SConstruct for shadowblox GDExtension
+# Run: scons platform=<platform> target=<target> use_llvm=yes
 
-Import(
-    [
-        "env_base",
-        "luau_lib",
-        "luau_includes",
-        "shadowblox_lib",
-        "shadowblox_includes",
-    ]
-)
+import os
+import subprocess
+import sys
 
-env = env_base.Clone()
-env["use_llvm"] = True
-env["use_hot_reload"] = False
-Export("env")
+# Build the shadowblox library first
+print("Building shadowblox library...")
+subprocess.run([sys.executable, "-m", "SCons", "-C", "..", "-j4"], check=True)
 
-# Build godot-cpp first to get the configured environment
+# Force use of clang/llvm for compatibility with shadowblox
+# The use_llvm option must be set before invoking godot-cpp's SConstruct
+ARGUMENTS["use_llvm"] = "yes"
+
+# Now build the GDExtension
 env = SConscript("../extern/godot-cpp/SConstruct")
 
 # Add our include paths
@@ -23,9 +22,26 @@ env.Append(CPPPATH=["src/", "include/"])
 sources = Glob("src/*.cpp")
 
 # Link shadowblox and luau libraries
-env.Append(LIBS=[shadowblox_lib, luau_lib])
-env.Append(CPPPATH=luau_includes)
-env.Append(CPPPATH=shadowblox_includes)
+env.Append(LIBPATH=["../shadowblox/"])
+env.Append(LIBS=["shadowblox"])
+env.Append(LIBPATH=["../extern/"])
+env.Append(LIBS=["luau"])
+
+# Add include paths (both include and src directories for Luau)
+env.Append(CPPPATH=[
+    "../shadowblox/include/",
+    "../extern/luau/Common/include/",
+    "../extern/luau/Common/src/",
+    "../extern/luau/Ast/include/",
+    "../extern/luau/Ast/src/",
+    "../extern/luau/Compiler/include/",
+    "../extern/luau/Compiler/src/",
+    "../extern/luau/VM/include/",
+    "../extern/luau/VM/src/",
+    "../extern/luau/CodeGen/include/",
+    "../extern/luau/CodeGen/src/",
+    "../extern/include/",
+])
 
 if env["target"] in ["editor", "template_debug"]:
     doc_data = env.GodotCPPDocData(

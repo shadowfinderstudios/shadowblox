@@ -17,7 +17,13 @@
 #include "gdextension_interface.h"
 
 #include "godot_cpp/core/defs.hpp"
+#include "godot_cpp/core/class_db.hpp"
 #include "godot_cpp/godot.hpp"
+
+#include "SbxGD/SbxRuntime.hpp"
+#include "SbxGD/SbxInstance.hpp"
+#include "SbxGD/SbxPart.hpp"
+#include "SbxGD/SbxModel.hpp"
 
 using namespace godot;
 
@@ -25,6 +31,12 @@ void initializeShadowbloxModule(ModuleInitializationLevel level) {
 	if (level != MODULE_INITIALIZATION_LEVEL_SCENE) {
 		return;
 	}
+
+	// Register shadowblox wrapper classes
+	ClassDB::register_class<SbxGD::SbxRuntime>();
+	ClassDB::register_class<SbxGD::SbxInstance>();
+	ClassDB::register_class<SbxGD::SbxPart>();
+	ClassDB::register_class<SbxGD::SbxModel>();
 }
 
 void uninitializeShadowbloxModule(ModuleInitializationLevel level) {
