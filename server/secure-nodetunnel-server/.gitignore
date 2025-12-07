@@ -1,0 +1,66 @@
+# Object files and output directories
+[Bb]in/
+[Oo]bj/
+**/[Rr]elease/
+**/[Dd]ebug/
+
+# NuGet packages
+# Packages in the root of the project
+[Pp]ackages/
+# project.lock.json and similar files
+project.assets.json
+*.nuget.g.props
+*.nuget.g.targets
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Visual Studio files
+*.vspscc
+*.vssscc
+*.csdproj.user
+# VS Code extensions settings
+.vscode/
+# MonoDevelop/Xamarin Studio
+*.userprefs
+
+# Test Results
+# MSTest, NUnit, xUnit test result files
+TestResults/
+# Visual Studio Test Explorer
+*.trx
+
+# Build-related files
+# Visual Studio IntelliSense/Precompiled Headers
+*.ipch
+*.aps
+*.ncb
+*.pdb
+*.obj
+*.o
+*.lo
+*.lib
+*.dll
+*.exe
+*.log
+*.bak
+*.com
+*.msi
+*.msp
+*.res
+*.ress
+*.tlb
+*.tlh
+*.tmp
+
+# SQL Server files
+*.mdf
+*.ldf
+
+# Local Deployment (Web projects)
+# Files created by publishing or deployment
+**/*.pubxml
+**/*.Publish.xml
