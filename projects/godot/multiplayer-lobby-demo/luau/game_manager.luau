@@ -1,11 +1,13 @@
 -- Tag Game Manager - Core game logic in Luau
 -- Uses SbxRuntime's generic rendering API to control GDScript visuals
 -- GDScript handles: rendering, input forwarding, network transport
+-- Now with host migration and state sync support
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-print("[TagGame] Loading game manager...")
+print("[TagGame] Loading game manager with host migration support...")
 
 -- Game configuration
 local CONFIG = {
@@ -15,11 +17,43 @@ local CONFIG = {
 	BOUNDS = { min = -20, max = 20 },
 }
 
--- Game state
+-- Game state (serializable for host migration)
 local GameState = {
 	taggedPlayerId = 0,
 	tagCooldowns = {},  -- userId -> time remaining
+	migrationInProgress = false,
 }
+
+-- Serialize game state for host migration / world state sync
+local function serializeGameState()
+	local cooldowns = {}
+	for k, v in pairs(GameState.tagCooldowns) do
+		cooldowns[tostring(k)] = v
+	end
+
+	return {
+		taggedPlayerId = GameState.taggedPlayerId,
+		tagCooldowns = cooldowns,
+	}
+end
+
+-- Deserialize game state from host migration / world state sync
+local function deserializeGameState(data)
+	if not data then return end
+
+	if data.taggedPlayerId then
+		GameState.taggedPlayerId = data.taggedPlayerId
+	end
+
+	if data.tagCooldowns then
+		GameState.tagCooldowns = {}
+		for k, v in pairs(data.tagCooldowns) do
+			GameState.tagCooldowns[tonumber(k)] = v
+		end
+	end
+
+	print("[TagGame] Deserialized game state. Tagged:", GameState.taggedPlayerId)
+end
 
 -- Helper functions to check server/client status dynamically
 -- These must be called each time since the status is set AFTER scripts load
@@ -273,12 +307,141 @@ end
 
 print("[TagGame] Game manager initialized!")
 
+-- ============================================================================
+-- HOST MIGRATION HANDLERS (Called from GDScript via Luau)
+-- ============================================================================
+
+-- Called when host migration starts
+local function onHostMigrationStarted(reason)
+	print("[TagGame] Host migration started:", reason)
+	GameState.migrationInProgress = true
+end
+
+-- Called when host migration completes
+local function onHostMigrationCompleted(newHostId)
+	print("[TagGame] Host migration completed. New host:", newHostId)
+	GameState.migrationInProgress = false
+
+	-- Refresh colors after migration
+	updatePlayerColors()
+	updateStatusText()
+end
+
+-- Called when we become the new host
+local function onBecameNewHost()
+	print("[TagGame] We became the new host!")
+	GameState.migrationInProgress = false
+
+	-- Make sure someone is "it"
+	if GameState.taggedPlayerId == 0 then
+		local players = Players:GetPlayers()
+		if #players > 0 and players[1] then
+			tagPlayer(players[1].UserId)
+		end
+	end
+
+	updatePlayerColors()
+	updateStatusText()
+end
+
+-- Build full world state for sync (includes game state and player positions)
+local function buildFullWorldState()
+	local state = {
+		gameState = serializeGameState(),
+		players = {},
+	}
+
+	-- Include all player positions
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player and player.Character then
+			local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+			if rootPart then
+				state.players[tostring(player.UserId)] = {
+					userId = player.UserId,
+					displayName = player.Name,
+					position = {
+						x = rootPart.Position.X,
+						y = rootPart.Position.Y,
+						z = rootPart.Position.Z,
+					},
+				}
+			end
+		end
+	end
+
+	return state
+end
+
+-- Apply full world state from sync
+local function applyFullWorldState(state)
+	if not state then return end
+
+	print("[TagGame] Applying full world state")
+
+	-- Apply game state
+	if state.gameState then
+		deserializeGameState(state.gameState)
+	end
+
+	-- Apply player positions
+	if state.players then
+		for userIdStr, playerData in pairs(state.players) do
+			local userId = tonumber(userIdStr)
+			local player = nil
+			for _, p in ipairs(Players:GetPlayers()) do
+				if p.UserId == userId then
+					player = p
+					break
+				end
+			end
+
+			if player and player.Character then
+				local rootPart = player.Character:FindFirstChild("HumanoidRootPart")
+				if rootPart and playerData.position then
+					rootPart.Position = Vector3.new(
+						playerData.position.x,
+						playerData.position.y,
+						playerData.position.z
+					)
+					print("[TagGame] Applied position for player", userId)
+				end
+			end
+		end
+	end
+
+	-- Refresh visuals
+	updatePlayerColors()
+	updateStatusText()
+end
+
 -- Export game state for external access
 return {
+	-- State getters
 	getTaggedPlayerId = function()
 		return GameState.taggedPlayerId
 	end,
 	getConfig = function()
 		return CONFIG
 	end,
+	isMigrating = function()
+		return GameState.migrationInProgress
+	end,
+
+	-- Serialization for host migration
+	serializeGameState = serializeGameState,
+	deserializeGameState = deserializeGameState,
+	buildFullWorldState = buildFullWorldState,
+	applyFullWorldState = applyFullWorldState,
+
+	-- Host migration event handlers
+	onHostMigrationStarted = onHostMigrationStarted,
+	onHostMigrationCompleted = onHostMigrationCompleted,
+	onBecameNewHost = onBecameNewHost,
+
+	-- Manual tag (for testing/admin)
+	tagPlayer = tagPlayer,
+
+	-- Force update visuals
+	updateColors = updatePlayerColors,
+	updateStatus = updateStatusText,
 }

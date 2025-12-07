@@ -1,11 +1,12 @@
 -- Tag Game - Main Game Initialization
 -- This script sets up the game world and core systems for the infection tag game
+-- Now with lobby system support for host migration
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-print("[Tag] Initializing game...")
+print("[Tag] Initializing game with lobby support...")
 
 -- Create workspace structure
 local function setupWorkspace()
@@ -52,6 +53,35 @@ local function setupReplicatedStorage()
 	gameStatus.Value = "Waiting for players..."
 	gameStatus.Parent = ReplicatedStorage
 
+	-- Create LobbyState folder for lobby system
+	local lobbyState = Instance.new("Model")
+	lobbyState.Name = "LobbyState"
+	lobbyState.Parent = ReplicatedStorage
+
+	-- Lobby name
+	local lobbyName = Instance.new("StringValue")
+	lobbyName.Name = "LobbyName"
+	lobbyName.Value = ""
+	lobbyName.Parent = lobbyState
+
+	-- Host online ID
+	local hostId = Instance.new("StringValue")
+	hostId.Name = "HostOnlineId"
+	hostId.Value = ""
+	hostId.Parent = lobbyState
+
+	-- Migration in progress flag
+	local migrating = Instance.new("BoolValue")
+	migrating.Name = "MigrationInProgress"
+	migrating.Value = false
+	migrating.Parent = lobbyState
+
+	-- Player count
+	local playerCount = Instance.new("IntValue")
+	playerCount.Name = "PlayerCount"
+	playerCount.Value = 0
+	playerCount.Parent = lobbyState
+
 	-- Create RemoteEvents folder
 	local remoteEvents = Instance.new("Model")
 	remoteEvents.Name = "RemoteEvents"
@@ -72,7 +102,30 @@ local function setupReplicatedStorage()
 	gameStateEvent.Name = "GameStateEvent"
 	gameStateEvent.Parent = remoteEvents
 
-	print("[Tag] ReplicatedStorage setup complete")
+	-- Create lobby events for host migration
+	local hostMigrationStarted = Instance.new("RemoteEvent")
+	hostMigrationStarted.Name = "HostMigrationStarted"
+	hostMigrationStarted.Parent = remoteEvents
+
+	local hostMigrationCompleted = Instance.new("RemoteEvent")
+	hostMigrationCompleted.Name = "HostMigrationCompleted"
+	hostMigrationCompleted.Parent = remoteEvents
+
+	local hostMigrationFailed = Instance.new("RemoteEvent")
+	hostMigrationFailed.Name = "HostMigrationFailed"
+	hostMigrationFailed.Parent = remoteEvents
+
+	-- World state sync event (for new players joining)
+	local worldStateSync = Instance.new("RemoteEvent")
+	worldStateSync.Name = "WorldStateSync"
+	worldStateSync.Parent = remoteEvents
+
+	-- Player registry sync event
+	local playerRegistrySync = Instance.new("RemoteEvent")
+	playerRegistrySync.Name = "PlayerRegistrySync"
+	playerRegistrySync.Parent = remoteEvents
+
+	print("[Tag] ReplicatedStorage setup complete with lobby support")
 end
 
 -- Initialize the game world

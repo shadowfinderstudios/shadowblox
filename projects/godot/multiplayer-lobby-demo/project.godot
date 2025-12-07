@@ -11,14 +11,14 @@ config_version=5
 [application]
 
 config/name="Lobby Tag - Multiplayer Demo"
-config/description="A multiplayer infection tag game built with shadowblox"
+config/description="A multiplayer infection tag game built with shadowblox and NodeTunnel with host migration support"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="res://icon.svg"
 
 [autoload]
 
-NetworkManager="*res://scripts/network_manager.gd"
+NodeTunnelManager="*res://scripts/node_tunnel_manager.gd"
 
 [editor_plugins]
 
