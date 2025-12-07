@@ -1,0 +1,5 @@
+# Ignore built libraries (they are copied by the build system)
+*.so
+*.dll
+*.dylib
+*.framework
