@@ -15,7 +15,7 @@ issue.
 
 Build prerequisites:
 
-- Python 3.14+
+- Python 3.11+
 - `scons`
 - Your toolchain of choice
 - Download the Roblox API dump using `python3 -m sbxcg api download` (or
