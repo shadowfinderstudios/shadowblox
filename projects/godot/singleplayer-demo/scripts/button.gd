@@ -16,6 +16,10 @@ signal button_pressed(button_id: int)
 
 func _ready() -> void:
 	original_color = button_color
+	# Make material unique so each button can have its own color
+	var mat = mesh.get_active_material(0)
+	if mat:
+		mesh.set_surface_override_material(0, mat.duplicate())
 	update_color()
 
 func interact(_player: Node3D) -> void:
